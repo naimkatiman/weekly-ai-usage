@@ -63,19 +63,26 @@ function cliError(cli, error) {
     '). Set "cli" in accounts.json to the full path of devin.exe.');
 }
 
-function status(cli) {
+function status(cli, ms) {
   return new Promise((resolve, reject) => {
-    let child, output = '';
-    try { child = spawn(cli, ['auth', 'status'], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }); }
+    // Without a user override in the environment, the CLI reports the server stored with the login.
+    const env = { ...process.env };
+    delete env.WINDSURF_API_SERVER_URL;
+    let child, output = '', timedOut = false;
+    try { child = spawn(cli, ['auth', 'status'], { env, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }); }
     catch (e) { reject(cliError(cli, e)); return; }
-    const timer = setTimeout(() => child.kill(), 20000);
+    const timer = setTimeout(() => { timedOut = true; child.kill(); }, ms);
     child.stdout.on('data', chunk => { if (output.length < 65536) output += chunk; });
     child.on('error', e => { clearTimeout(timer); reject(cliError(cli, e)); });
-    child.on('close', () => { clearTimeout(timer); resolve(parseStatus(output)); });
+    child.on('close', () => {
+      clearTimeout(timer);
+      if (timedOut) reject(new Error('Devin CLI did not answer in time. Retry or open Devin.'));
+      else resolve(parseStatus(output));
+    });
   });
 }
 
-function relay(cli) {
+function relay(cli, ms) {
   // The native client owns the credentials and its required request fingerprint.
   // This short-lived loopback relay captures only the quota response, never logs requests.
   return new Promise((resolve, reject) => {
@@ -124,20 +131,22 @@ function relay(cli) {
           windowsHide: true, stdio: 'ignore',
         });
       } catch (e) { startError = e; finish(); return; }
-      timer = setTimeout(() => { child.kill(); }, 20000);
+      timer = setTimeout(() => { child.kill(); }, ms);
       child.on('error', e => { startError = e; finish(); });
       child.on('close', finish);
     });
   });
 }
 
-async function fetchNative(cli = 'devin') {
-  const login = await status(cli);
+async function fetchNative(cli = 'devin', budget = 18000) {
+  // One deadline for both steps keeps the collector well inside the dashboard's 40 second wait.
+  const deadline = Date.now() + budget;
+  const login = await status(cli, Math.min(8000, budget));
   if (!login.server) throw new Error('Devin login unavailable. Run devin auth login.');
   // The relay forwards credentials only to the default server, never to another tenant's.
   if (login.server !== DEFAULT_SERVER)
     throw new Error('Only the default Devin login (server.codeium.com) is supported. This login uses ' + login.server + '.');
-  const snapshot = await relay(cli);
+  const snapshot = await relay(cli, Math.max(1000, deadline - Date.now()));
   if (login.plan) snapshot.userStatus.planStatus.planInfo.planName = login.plan;
   return snapshot;
 }

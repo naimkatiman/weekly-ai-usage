@@ -200,6 +200,10 @@ test('config file errors name the real problem', t => {
   assert.equal(loadConfig(file).accounts.length, 1);
   fs.writeFileSync(file, '{"accounts":[{"provider":"devin","email":"a@b.com","cli":"C:\\Devin\\devin.exe"}]}');
   assert.throws(() => loadConfig(file), /is not valid JSON: .*forward slashes/);
+  fs.writeFileSync(file, '{"accounts":[{"provider":"codex","email":"a@b.com"},]}');
+  assert.throws(() => loadConfig(file), e => /is not valid JSON/.test(e.message) && !/forward slashes/.test(e.message));
+  fs.writeFileSync(file, Buffer.from('\uFEFF{"accounts":[]}', 'utf16le'));
+  assert.throws(() => loadConfig(file), /saved as UTF-16/);
 });
 
 test('configured plan survives when the provider reports none', () => {

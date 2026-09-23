@@ -31,8 +31,10 @@ function loadConfig(file) {
     if (e.code === 'ENOENT') throw new Error(file + ' not found. Copy accounts.example.json to accounts.json and list your logins.');
     throw new Error(file + ' could not be read: ' + e.message);
   }
+  if (text.includes('\0')) throw new Error(file + ' is saved as UTF-16. Save it as UTF-8.');
   try { return JSON.parse(text.replace(/^\uFEFF/, '')); } catch (e) {
-    throw new Error(file + ' is not valid JSON: ' + e.message + '. Write Windows paths with forward slashes.');
+    throw new Error(file + ' is not valid JSON: ' + e.message.split('\n')[0] +
+      (/escape/i.test(e.message) ? ' Write Windows paths with forward slashes.' : ''));
   }
 }
 
