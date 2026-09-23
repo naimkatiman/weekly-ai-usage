@@ -25,10 +25,21 @@ function quota(used, reset) {
   return { used, remaining: used === null ? null : 100 - used, reset: iso(reset) };
 }
 
+function loadConfig(file) {
+  let text;
+  try { text = fs.readFileSync(file, 'utf8'); } catch (e) {
+    if (e.code === 'ENOENT') throw new Error(file + ' not found. Copy accounts.example.json to accounts.json and list your logins.');
+    throw new Error(file + ' could not be read: ' + e.message);
+  }
+  try { return JSON.parse(text.replace(/^\uFEFF/, '')); } catch (e) {
+    throw new Error(file + ' is not valid JSON: ' + e.message + '. Write Windows paths with forward slashes.');
+  }
+}
+
 // The roster is user config, never code: one entry per provider login.
 function loadAccounts(config) {
   if (!config || !Array.isArray(config.accounts) || config.accounts.length === 0)
-    throw new Error('No accounts configured. Copy accounts.example.json to accounts.json and list your logins.');
+    throw new Error('No accounts configured. List your logins under "accounts" in accounts.json.');
   const seen = new Set();
   return config.accounts.map((entry, index) => {
     const where = 'accounts[' + index + ']';
@@ -47,7 +58,7 @@ function parseCodex(data, email) {
   const windows = [data.rate_limit?.primary_window, data.rate_limit?.secondary_window].filter(Boolean);
   const weekly = windows.find(w => w.limit_window_seconds === 604800);
   const session = windows.find(w => w.limit_window_seconds === 18000);
-  return { plan: data.plan_type || 'Pro', weekly: quota(weekly?.used_percent, weekly?.reset_at),
+  return { ...(data.plan_type ? { plan: data.plan_type } : {}), weekly: quota(weekly?.used_percent, weekly?.reset_at),
     session: quota(session?.used_percent, session?.reset_at) };
 }
 function parseClaude(data) {
@@ -69,7 +80,8 @@ function parseDevin(data, email) {
   const info = p?.planInfo || p?.plan_info;
   const remaining = p?.weeklyQuotaRemainingPercent ?? p?.weekly_quota_remaining_percent;
   const daily = p?.dailyQuotaRemainingPercent ?? p?.daily_quota_remaining_percent;
-  return { plan: info?.planName || info?.plan_name || 'Max',
+  const plan = info?.planName || info?.plan_name;
+  return { ...(plan ? { plan } : {}),
     weekly: quota(percent(remaining) === null || info?.hideWeeklyQuota || info?.hide_weekly_quota ? null : 100 - remaining,
       Number(p?.weeklyQuotaResetAtUnix ?? p?.weekly_quota_reset_at_unix) || null),
     session: quota(percent(daily) === null || info?.hideDailyQuota || info?.hide_daily_quota ? null : 100 - daily,
@@ -174,7 +186,7 @@ function withStatus(account, result, error, prior, now) {
       && prior.capturedAt && now - Date.parse(prior.capturedAt) < 86400000
       && prior.weekly.reset && Date.parse(prior.weekly.reset) > now) {
     Object.assign(row, { weekly: prior.weekly, session: prior.session, capturedAt: prior.capturedAt,
-      plan: prior.plan, status: 'Stale' });
+      plan: prior.plan, sessionLabel: prior.sessionLabel || row.sessionLabel, status: 'Stale' });
   }
   return row;
 }
@@ -191,7 +203,7 @@ async function collect(accounts, previous = null) {
 if (require.main === module) {
   const cache = path.join(__dirname, 'usage-cache.json');
   let accounts;
-  try { accounts = loadAccounts(read(process.env.WEEKLY_USAGE_CONFIG || path.join(__dirname, 'accounts.json'))); }
+  try { accounts = loadAccounts(loadConfig(process.env.WEEKLY_USAGE_CONFIG || path.join(__dirname, 'accounts.json'))); }
   catch (e) { process.stderr.write(e.message + '\n'); process.exit(2); }
   collect(accounts, read(cache)).then(data => {
     const output = JSON.stringify(data, null, 2);
@@ -202,4 +214,4 @@ if (require.main === module) {
   }).catch(() => { process.stderr.write('Usage refresh failed. Check local file permissions.\n'); process.exitCode = 1; });
 }
 
-module.exports = { loadAccounts, quota, checkEmail, parseCodex, parseClaude, parseGrok, parseDevin, withStatus, credentials };
+module.exports = { loadConfig, loadAccounts, quota, checkEmail, parseCodex, parseClaude, parseGrok, parseDevin, withStatus, credentials };

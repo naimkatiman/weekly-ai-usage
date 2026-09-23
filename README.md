@@ -4,6 +4,8 @@ A small Windows tray dashboard that shows the weekly quota of every AI subscript
 
 Built for people who run more than one account per provider (work and personal, or one per client) and keep hitting a weekly limit on the wrong one.
 
+![Dashboard with two Claude, two Codex, one Grok and one Devin account](docs/screenshot.png)
+
 ## What it reads
 
 | Provider | Plan | Weekly window | Short window | Credentials it reads |
@@ -11,9 +13,9 @@ Built for people who run more than one account per provider (work and personal, 
 | Claude | Pro / Max | 7 day | 5 hour | `<home>/.credentials.json` and `<home>/.claude.json` (Claude Code config dir) |
 | Codex | Plus / Pro | 7 day | 5 hour | `<home>/auth.json` (Codex CLI home) |
 | Grok | SuperGrok | weekly credits | none | `<home>/auth.json` (default `~/.grok`) |
-| Devin | Pro / Max | weekly | daily | the installed `devin` CLI's own login |
+| Devin | Pro / Max | weekly | daily | the installed `devin` CLI's own login (default `server.codeium.com` login only) |
 
-It only reads logins that already exist. It never refreshes tokens, switches accounts, sends prompts or spends credits. Each token goes only to its own provider's usage endpoint, and every reply is checked against the configured email so one account's numbers are never shown under another.
+It only reads logins that already exist. It never refreshes tokens, switches accounts, sends prompts or spends credits. Each token goes only to its own provider's usage endpoint. Claude, Codex and Devin replies are checked against the configured email, so one account's numbers are never shown under another. Grok's usage reply carries no identity, so Grok is matched on the email the Grok CLI stored next to its key.
 
 ## Setup
 
@@ -32,7 +34,8 @@ Claude Code and Codex both keep a login per config folder. Give each account its
 ```powershell
 # one-time sign-in per account
 $env:CLAUDE_CONFIG_DIR = "$HOME\.claude-work"; claude    # then /login as work@example.com
-$env:CODEX_HOME = "$HOME\.codex-work"; codex login        # as work@example.com
+$env:CODEX_HOME = "$HOME\.codex-work"; New-Item -ItemType Directory -Force $env:CODEX_HOME | Out-Null
+codex login                                               # as work@example.com (Codex needs the folder to exist)
 ```
 
 ```json
@@ -50,13 +53,13 @@ $env:CODEX_HOME = "$HOME\.codex-work"; codex login        # as work@example.com
 | Field | Required | Meaning |
 | --- | --- | --- |
 | `provider` | yes | `claude`, `codex`, `grok` or `devin` |
-| `email` | yes | the account's email. Readings for any other identity are rejected. |
+| `email` | yes | the account's email. Claude, Codex and Devin readings for any other identity are rejected. |
 | `home` | no | that account's config folder. Without it, the default profile (`~/.claude`, `~/.codex`, `~/.grok`) is used when its email matches. |
 | `label` | no | shown before the email |
 | `plan` | no | display name when the provider does not report one |
 | `cli` | no | Devin only: path to `devin.exe` if it is not on PATH |
 
-Set `WEEKLY_USAGE_CONFIG` to keep the file somewhere else.
+Each provider and email pair can appear once, so two workspaces or orgs under the same email are not supported. Write Windows paths with forward slashes (`C:/tools/devin.exe`); single backslashes are invalid JSON. Set `WEEKLY_USAGE_CONFIG` to keep the file somewhere else.
 
 ## Behaviour
 
@@ -67,13 +70,13 @@ Set `WEEKLY_USAGE_CONFIG` to keep the file somewhere else.
 - Launching it twice brings the existing window back, recentred if its last monitor is gone.
 - `usage-cache.json` holds emails and percentages only, never tokens. It is gitignored.
 
-Headless: `node collect.cjs` prints the same JSON the window shows, so you can use it from scripts on any OS with Node.
+Headless: `node collect.cjs` prints the same JSON the window shows, so scripts can use it on Windows or Linux. On macOS, Claude Code keeps its login in the Keychain instead of `.credentials.json`, so Claude rows report no matching login there.
 
 ## Caveats
 
 These are the endpoints the official CLIs use to show your usage. They are not public APIs and can change without notice. Grok and Devin replies are decoded from protobuf with strict checks; anything malformed or ambiguous is reported as Unavailable rather than guessed.
 
-Devin's status call needs the native client's request fingerprint, so the collector runs `devin auth status` against a short-lived loopback relay that forwards only two fixed read-only routes to `server.codeium.com` and closes after the probe.
+Devin's status call needs the native client's request fingerprint, so the collector runs `devin auth status` against a short-lived loopback relay that forwards only two fixed read-only routes to `server.codeium.com` and closes after the probe. It first checks which server the login belongs to, and refuses enterprise or regional Devin logins rather than send their credentials to the default server.
 
 Endpoint references: [CodexBar provider notes](https://github.com/steipete/CodexBar/tree/main/docs) for Claude, Codex and Grok.
 

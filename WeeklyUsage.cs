@@ -19,6 +19,8 @@ public sealed class Account {
     public Quota weekly { get; set; } public Quota session { get; set; } public string sessionLabel { get; set; }
 }
 public sealed class Snapshot { public string generatedAt { get; set; } public List<Account> accounts { get; set; } }
+// A problem the user must fix (bad config, missing Node), shown verbatim in the footer.
+public sealed class SetupError : Exception { public SetupError(string message) : base(message) { } }
 
 public sealed class WeeklyUsage : Form {
     [DllImport("user32.dll")] static extern uint RegisterWindowMessage(string message);
@@ -26,7 +28,7 @@ public sealed class WeeklyUsage : Form {
     [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr icon);
     [DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int processId);
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
-    static readonly uint showMessage = RegisterWindowMessage("WeeklyUsage.Show.2026");
+    static readonly uint showMessage = RegisterWindowMessage("WeeklyAiUsage.Show");
     readonly string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
     readonly DataGridView grid = new DataGridView();
     readonly Label footer = new Label(), detail = new Label(), summary = new Label();
@@ -180,20 +182,26 @@ public sealed class WeeklyUsage : Form {
                     FileName = File.Exists(node) ? node : "node.exe",
                     Arguments = "\"" + Path.Combine(appDirectory, "collect.cjs") + "\"",
                     WorkingDirectory = appDirectory, UseShellExecute = false, CreateNoWindow = true,
-                    RedirectStandardOutput = true, RedirectStandardError = true };
-                using (var process = Process.Start(start)) {
+                    RedirectStandardOutput = true, RedirectStandardError = true,
+                    StandardOutputEncoding = System.Text.Encoding.UTF8, StandardErrorEncoding = System.Text.Encoding.UTF8 };
+                Process started;
+                try { started = Process.Start(start); }
+                catch (System.ComponentModel.Win32Exception) {
+                    throw new SetupError("Node.js was not found. Install Node 20+ from nodejs.org or add node.exe to PATH, then click Refresh now.");
+                }
+                using (var process = started) {
                     Task<string> output = process.StandardOutput.ReadToEndAsync();
                     Task<string> error = process.StandardError.ReadToEndAsync();
                     if (!process.WaitForExit(40000)) { process.Kill(); throw new Exception("Usage check timed out."); }
                     string message = (await error).Trim();
                     // Exit code 2 is a configuration problem the user must fix, so show it verbatim.
-                    if (process.ExitCode == 2) throw new ArgumentException(message);
+                    if (process.ExitCode == 2) throw new SetupError(message);
                     if (process.ExitCode != 0) throw new Exception("Usage check failed. Try Refresh now.");
                     return await output;
                 }
             });
             if (!closing) LoadSnapshot(json);
-        } catch (ArgumentException e) {
+        } catch (SetupError e) {
             if (!closing) refreshError = e.Message;
         } catch (Exception) {
             if (!closing) refreshError = "Refresh failed. Last readings may be stale. Try Refresh now.";

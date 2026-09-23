@@ -189,3 +189,46 @@ test('each Codex account reads its own CODEX_HOME and rejects a different identi
   write('someone-else@example.com');
   assert.throws(() => credentials(accounts[2], root), /No matching codex login/);
 });
+
+test('config file errors name the real problem', t => {
+  const { loadConfig } = require('./collect.cjs');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'weekly-config-test-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'accounts.json');
+  assert.throws(() => loadConfig(file), /not found/);
+  fs.writeFileSync(file, '\uFEFF{"accounts":[{"provider":"codex","email":"a@b.com"}]}');
+  assert.equal(loadConfig(file).accounts.length, 1);
+  fs.writeFileSync(file, '{"accounts":[{"provider":"devin","email":"a@b.com","cli":"C:\\Devin\\devin.exe"}]}');
+  assert.throws(() => loadConfig(file), /is not valid JSON: .*forward slashes/);
+});
+
+test('configured plan survives when the provider reports none', () => {
+  const [devin, codex] = loadAccounts({ accounts: [
+    { provider: 'devin', email: 'a@b.com', plan: 'Pro' }, { provider: 'codex', email: 'a@b.com', plan: 'Plus' }] });
+  const now = Date.parse('2030-09-15T00:00:00Z');
+  const status = { userStatus: { email: 'a@b.com', planStatus: { weeklyQuotaRemainingPercent: 50 } } };
+  assert.equal(withStatus(devin, parseDevin(status, 'a@b.com'), null, null, now).plan, 'Pro');
+  status.userStatus.planStatus.planInfo = { planName: 'Max' };
+  assert.equal(withStatus(devin, parseDevin(status, 'a@b.com'), null, null, now).plan, 'Max');
+  assert.equal(withStatus(codex, parseCodex({ email: 'a@b.com' }, 'a@b.com'), null, null, now).plan, 'Plus');
+});
+
+test('stale rows keep the window label of their original reading', () => {
+  const [devin] = loadAccounts({ accounts: [{ provider: 'devin', email: 'a@b.com' }] });
+  const now = Date.parse('2030-09-15T00:00:00Z');
+  const prior = withStatus(devin, { weekly: quota(20, future), session: quota(40, future), sessionLabel: 'Daily' }, null, null, now);
+  assert.equal(withStatus(devin, null, 'fail', prior, now + 60000).sessionLabel, 'Daily');
+});
+
+test('Devin status text yields the login server and plan', () => {
+  const { parseStatus } = require('./devin.cjs');
+  const text = 'Logged in (via Devin).\n\nCredentials:\n  API server:        https://server.codeium.com/\n\nAccount:\n  Tier:              Devin Max\n  Plan:              Max\n';
+  assert.deepEqual(parseStatus(text), { server: 'https://server.codeium.com', plan: 'Max' });
+  assert.deepEqual(parseStatus('\x1b[1mAPI server:\x1b[0m https://eu.windsurf.com\n'), { server: 'https://eu.windsurf.com', plan: null });
+  assert.deepEqual(parseStatus('Not logged in.\n'), { server: null, plan: null });
+});
+
+test('a missing Devin CLI is reported as missing, not as a login problem', async () => {
+  const { fetchNative } = require('./devin.cjs');
+  await assert.rejects(fetchNative(path.join(os.tmpdir(), 'no-such-devin-cli.exe')), /Devin CLI not found .*"cli"/);
+});
