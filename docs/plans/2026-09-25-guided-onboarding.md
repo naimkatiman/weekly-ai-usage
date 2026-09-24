@@ -36,9 +36,18 @@ Each layer has a separate commit, at most 15 files and 500 changed lines. Split 
 ## Progress
 
 - [x] Public baseline and existing tests reviewed; clean isolated checkout created.
-- [ ] Configuration service and tests.
-- [ ] Guided UI and native verification.
-- [ ] Portable ZIP and CI.
-- [ ] Documentation and LinkedIn draft.
+- [x] Configuration service and tests.
+- [x] Guided UI and native verification.
+- [x] Portable ZIP and CI workflow.
+- [x] Documentation and LinkedIn draft.
 - [ ] Independent review, hosted checks, merge and preview release.
 - [ ] Three new users reach a verified account reading within five minutes and recover from a missing login.
+
+## September 25 verification
+
+- 24 collector tests, 80 configuration assertions and 25 native onboarding checks passed. C# compiled with warnings as errors.
+- The extracted portable ZIP passed the same 25 native checks against its shipped executable. Its executable hash matched the source build.
+- Native screenshots show first-run setup, the account editor, missing-login recovery and a clearly labelled synthetic dashboard.
+- The account editor was also inspected with control bounds scaled to 150%; real monitor-DPI switching was not performed.
+- Independent review caught and verified fixes for removed accounts returning from cache, default Claude metadata precedence, copied prose being treated as shell commands, and a test modal that could hang after a failed save.
+- Live provider sign-ins, a machine without Node.js, and the three-person usability target have not been tested. Installed Node.js was v24.12.0 locally; CI covers Node.js 20.

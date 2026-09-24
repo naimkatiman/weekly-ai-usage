@@ -1,51 +1,77 @@
-# Weekly AI Usage
+﻿Weekly AI Usage
+===============
 
-A small Windows tray dashboard that shows the weekly quota of every AI subscription you are signed into: several Claude accounts, several Codex accounts, Grok and Devin, side by side in one table.
+A Windows tray dashboard for checking Claude, Codex, Grok and Devin quota in one place. Keep separate rows for work and personal accounts, see remaining weekly quota and reset times, and select an account to inspect its shorter usage window.
 
-Built for people who run more than one account per provider (work and personal, or one per client) and keep hitting a weekly limit on the wrong one.
+![Dashboard with three accounts and account management controls](docs/screenshot.png)
 
-![Dashboard with two Claude, two Codex, one Grok and one Devin account](docs/screenshot.png)
+Synthetic demo data. These readings illustrate the UI and are not live account results.
 
-## What it reads
+Get your first account working
+------------------------------
 
-| Provider | Plan | Weekly window | Short window | Credentials it reads |
+You need Windows 10 or 11, [Node.js 20 or newer](https://nodejs.org), and a supported provider CLI that you have already signed into. This app reads that existing login. It does not sign you in.
+
+1. Download the portable ZIP from [Releases](https://github.com/naimkatiman/weekly-ai-usage/releases). This is a preview release.
+2. Extract the entire ZIP to a folder you can write to, such as a folder under Documents. Keep the files together.
+3. Open `WeeklyUsage.exe`, then choose Add your first account.
+4. Choose your provider. Select Find existing login to fill in the email from its local profile, or enter the email yourself. For a custom profile, enter its folder first. Devin requires manual email entry.
+5. Choose Save account. The dashboard checks the account immediately. Confirm that its row shows Live and a weekly reading. A detected email alone does not prove that the provider accepts the login.
+
+If the row is Unavailable, select it and open Sign-in help. Follow the instructions for that account, then choose Refresh now. See [troubleshooting](docs/troubleshooting.md) for missing Node.js, custom folders and other setup failures.
+
+Use Manage accounts to edit an account, or choose New account there to add another. A label such as Work or Personal is optional. Start with one account so you can confirm its reading before adding the rest.
+
+Minimize the window to keep it running in the tray. Closing the window with X exits the app. It checks on launch and every 15 minutes while running. Launching it again brings the existing window forward.
+
+![First-run screen with Add your first account](docs/onboarding.png)
+
+What it reads
+-------------
+
+| Provider | Plan | Weekly window | Short window | Existing login |
 | --- | --- | --- | --- | --- |
-| Claude | Pro / Max | 7 day | 5 hour | `<home>/.credentials.json` and `<home>/.claude.json` (Claude Code config dir) |
-| Codex | Plus / Pro | 7 day | 5 hour | `<home>/auth.json` (Codex CLI home) |
-| Grok | SuperGrok | weekly credits | none | `<home>/auth.json` (default `~/.grok`) |
-| Devin | Pro / Max | weekly | daily | the installed `devin` CLI's own login (default `server.codeium.com` login only) |
+| Claude | Pro / Max | 7 day | 5 hour | Claude Code profile; default `~/.claude` plus `~/.claude.json` |
+| Codex | Plus / Pro | 7 day | 5 hour | `auth.json` in the Codex CLI home; default `~/.codex` |
+| Grok | SuperGrok | weekly credits | none | `auth.json` in the Grok profile; default `~/.grok` |
+| Devin | Pro / Max | weekly | daily | Installed Devin CLI's login at `server.codeium.com` only |
 
-It only reads logins that already exist. It never refreshes tokens, switches accounts, sends prompts or spends credits. Each token goes only to its own provider's usage endpoint. Claude, Codex and Devin replies are checked against the configured email, so one account's numbers are never shown under another. Grok's usage reply carries no identity, so Grok is matched on the email the Grok CLI stored next to its key.
+It only reads existing logins. It never refreshes tokens, switches accounts, sends prompts or spends credits. Find existing login reads local identity information; saving an account starts a network usage check. Tokens are sent only to their own provider's usage or identity endpoints. There is no shared dashboard service receiving them.
 
-## Setup
+Claude, Codex and Devin replies are checked against the configured email. Grok's usage reply has no identity, so Grok is matched using the email its CLI stored with the key. The app does not store tokens in `accounts.json` or `usage-cache.json`. Those files do contain account emails; the cache also contains readings and status information.
 
-Requirements: Windows 10 or 11, [Node.js 20+](https://nodejs.org), and the provider CLIs you already use.
+Understanding the readings
+--------------------------
 
-1. Clone this repo.
-2. Build the window (uses the C# compiler that ships with Windows, no SDK needed):
-   `powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1`
-3. Copy `accounts.example.json` to `accounts.json` and list your logins.
-4. Run `WeeklyUsage.exe`. It checks on launch and every 15 minutes, and minimizes to the tray.
+| State | Meaning |
+| --- | --- |
+| Live | The provider returned a current reading for this account. |
+| Stale | The latest check failed or the displayed reading is old. Its original capture time stays visible. A failed check can retain a previous reading for up to 24 hours. |
+| Reset pending | The reported reset time has passed. The app waits for a new provider reading instead of assuming 0%. |
+| Unavailable | No usable reading is available. Missing numbers are never displayed as zero. |
 
-## Multiple accounts per provider
+Select an account for its details and any error message. Use Refresh now after repairing a login or connection.
 
-Claude Code and Codex both keep a login per config folder. Give each account its own folder, sign in once per folder, and point `home` at it:
+Multiple accounts and custom profiles
+------------------------------------
 
-```powershell
-# one-time sign-in per account
-$env:CLAUDE_CONFIG_DIR = "$HOME\.claude-work"; claude    # then /login as work@example.com
-$env:CODEX_HOME = "$HOME\.codex-work"; New-Item -ItemType Directory -Force $env:CODEX_HOME | Out-Null
-codex login                                               # as work@example.com (Codex needs the folder to exist)
-```
+Each provider and email pair can appear once. Separate workspaces or organizations under the same email are not supported. Each account needs an existing CLI login that matches its email.
+
+For Claude and Codex, set Profile folder to the directory used by that account's CLI. A custom Claude profile contains `.credentials.json` and `.claude.json`; a custom Codex profile contains `auth.json`. Grok uses `auth.json` in its profile folder. The app does not move or create provider credentials. Use Sign-in help for the selected account's recovery instructions.
+
+For Devin, set the optional Devin CLI path if `devin.exe` is not on PATH. Only the default server login is supported; enterprise and regional logins are rejected.
+
+Manual configuration
+--------------------
+
+The account editor creates `accounts.json` beside the app by default. Set `WEEKLY_USAGE_CONFIG` before launching the app to use a different file; the editor and collector both use it. Existing account settings and additional JSON fields are preserved when the editor saves. If another process changes the file, reopen Manage accounts before saving again.
+
+For manual setup, copy `accounts.example.json` to `accounts.json`, replace the example email with your own, and choose Refresh now. The example contains one account:
 
 ```json
 {
   "accounts": [
-    { "provider": "claude", "email": "me@example.com" },
-    { "provider": "claude", "email": "work@example.com", "label": "Work", "home": "~/.claude-work" },
-    { "provider": "codex", "email": "work@example.com", "home": "~/.codex-work" },
-    { "provider": "grok", "email": "me@example.com" },
-    { "provider": "devin", "email": "work@example.com", "cli": "C:/path/to/devin.exe" }
+    { "provider": "claude", "email": "me@example.com" }
   ]
 }
 ```
@@ -53,43 +79,62 @@ codex login                                               # as work@example.com 
 | Field | Required | Meaning |
 | --- | --- | --- |
 | `provider` | yes | `claude`, `codex`, `grok` or `devin` |
-| `email` | yes | the account's email. Claude, Codex and Devin readings for any other identity are rejected. |
-| `home` | no | that account's config folder. Without it, the default profile (`~/.claude`, `~/.codex`, `~/.grok`) is used when its email matches. |
-| `label` | no | shown before the email |
-| `plan` | no | display name when the provider does not report one |
-| `cli` | no | Devin only: path to `devin.exe` if it is not on PATH |
+| `email` | yes | The email of the existing provider login. |
+| `home` | no | That account's profile folder, for example `~/.codex-work`. Without it, the provider's default folder is used. |
+| `label` | no | Display label, for example `Work`. |
+| `plan` | no | Display name when the provider does not report one. |
+| `cli` | no | Devin only: path to `devin.exe` if it is not on PATH. |
 
-Each provider and email pair can appear once, so two workspaces or orgs under the same email are not supported. Write Windows paths with forward slashes (`C:/tools/devin.exe`); single backslashes are invalid JSON. Set `WEEKLY_USAGE_CONFIG` to keep the file somewhere else.
+Save JSON as UTF-8. Use forward slashes in Windows paths, such as `C:/tools/devin.exe`, or double each backslash. Never put credentials or tokens in this file.
 
-## Behaviour
+Updates and removal
+-------------------
 
-- **Expired login:** the row says so. Open that account's CLI, run `/usage` or sign in, then click Refresh now. The Sign-in help button shows the exact step for the selected row.
-- **Failed read:** the last good reading for the same account stays on screen marked Stale, with its original time, for up to 24 hours.
-- **Passed reset:** shows Reset pending. It never assumes a fresh 0%.
-- **Missing numbers** show as Unavailable, never as zero.
-- Launching it twice brings the existing window back, recentred if its last monitor is gone.
-- `usage-cache.json` holds emails and percentages only, never tokens. It is gitignored.
+Before updating, exit the app and back up `accounts.json`. If you set `WEEKLY_USAGE_CONFIG`, back up that file instead and keep the same setting when launching the new version. Release ZIPs do not contain a real `accounts.json` or `usage-cache.json`.
 
-Headless: `node collect.cjs` prints the same JSON the window shows, so scripts can use it on Windows or Linux. On macOS, Claude Code keeps its login in the Keychain instead of `.credentials.json`, so Claude rows report no matching login there.
+Extract a new release to a new folder. Copy your old `accounts.json` into it, or continue using your external configuration file, then launch the new executable. The usage cache is optional and can be rebuilt by refreshing. Keep the old folder until the new version reads your account correctly.
 
-## Caveats
+To remove the app, exit it and delete its extracted folder. This removes its local configuration and cache if they are in that folder. Remove any external configuration file separately if you no longer need it. Provider CLI logins remain in their own folders and are unchanged.
 
-These are the endpoints the official CLIs use to show your usage. They are not public APIs and can change without notice. Grok and Devin replies are decoded from protobuf with strict checks; anything malformed or ambiguous is reported as Unavailable rather than guessed.
+Caveats
+-------
 
-Devin's status call needs the native client's request fingerprint, so the collector runs `devin auth status` against a short-lived loopback relay that forwards only two fixed read-only routes to `server.codeium.com` and closes after the probe. It first checks which server the login belongs to, and refuses enterprise or regional Devin logins rather than send their credentials to the default server.
+These are endpoints used by the provider CLIs, not public APIs. They can change without notice. Grok and Devin replies are decoded from protobuf with strict checks; malformed or ambiguous replies are reported as Unavailable.
+
+Devin's status call needs the native client's request fingerprint. The collector runs `devin auth status` through a short-lived loopback relay that forwards only two fixed read-only routes to `server.codeium.com`, then closes. It checks the login's server first and rejects enterprise or regional logins before forwarding credentials.
 
 Endpoint references: [CodexBar provider notes](https://github.com/steipete/CodexBar/tree/main/docs) for Claude, Codex and Grok.
 
-## Development
+Build from source
+-----------------
 
+In PowerShell, with Git and Node.js installed:
+
+```powershell
+git clone https://github.com/naimkatiman/weekly-ai-usage.git
+Set-Location weekly-ai-usage
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
+.\WeeklyUsage.exe
 ```
-node --test collect.test.cjs
+
+The build uses the .NET Framework C# compiler included with Windows. No additional .NET SDK or package installation is needed. Keep the executable with the collector files.
+
+Development
+-----------
+
+Run all tests, compile, then create a portable preview package:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\test.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\package.ps1 -Version 0.1.0-preview.1
 ```
 
-`collect.cjs` builds the snapshot, `grok.cjs` and `devin.cjs` decode those providers' binary replies, `WeeklyUsage.cs` is the WinForms window.
+The package and SHA-256 checksum are written to `dist/WeeklyAIUsage-0.1.0-preview.1-windows.zip` and its `.sha256` file. `collect.cjs` builds the snapshot; `grok.cjs` and `devin.cjs` decode provider responses. The C# sources implement the window and account editor.
 
-## License
+Headless: after configuring an account, `node collect.cjs` prints the snapshot as JSON on Windows or Linux. On macOS, Claude Code uses the Keychain instead of `.credentials.json`, so Claude rows report no matching login.
 
-MIT. See [LICENSE](LICENSE).
+License
+-------
 
-Tray icon: Lucide gauge geometry, Copyright (c) Lucide Contributors, ISC License.
+MIT. See [LICENSE](LICENSE). Tray icon: Lucide gauge geometry, Copyright (c) Lucide Contributors, ISC License.

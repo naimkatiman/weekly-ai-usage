@@ -1,10 +1,5 @@
 {
   "accounts": [
-    { "provider": "claude", "email": "me@example.com" },
-    { "provider": "claude", "email": "work@example.com", "label": "Work", "home": "~/.claude-work" },
-    { "provider": "codex", "email": "me@example.com" },
-    { "provider": "codex", "email": "work@example.com", "label": "Work", "home": "~/.codex-work" },
-    { "provider": "grok", "email": "me@example.com" },
-    { "provider": "devin", "email": "work@example.com" }
+    { "provider": "claude", "email": "me@example.com" }
   ]
 }
