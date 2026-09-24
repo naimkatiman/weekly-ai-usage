@@ -32,7 +32,8 @@ public sealed class WeeklyUsage : Form {
     readonly string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
     readonly DataGridView grid = new DataGridView();
     readonly Label footer = new Label(), detail = new Label(), summary = new Label();
-    readonly Button refresh = new Button();
+    readonly Button refresh = new Button(), help = new Button(), manage = new Button(), first = new Button();
+    readonly Panel welcome = new Panel();
     readonly NotifyIcon tray = new NotifyIcon();
     readonly System.Windows.Forms.Timer schedule = new System.Windows.Forms.Timer();
     readonly System.Windows.Forms.Timer clock = new System.Windows.Forms.Timer();
@@ -81,18 +82,28 @@ public sealed class WeeklyUsage : Form {
         header.Controls.AddRange(new Control[] { title, summary, refresh });
         header.Resize += delegate { refresh.Left = header.ClientSize.Width - refresh.Width - 22; };
 
-        var bottom = new Panel { Dock = DockStyle.Bottom, Height = 150 };
+        var bottom = new Panel { Dock = DockStyle.Bottom, Height = 176 };
         detail.SetBounds(22, 13, 1136, 51);
         detail.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
         detail.Text = "Select an account for its last reading and shorter usage window.";
-        var help = new Button { Text = "Sign-in help", Location = new Point(22, 72), Size = new Size(130, 30) };
+        manage.Text = "Manage accounts"; manage.Location = new Point(22, 72); manage.Size = new Size(150, 32);
+        manage.Click += async delegate { await ManageAccounts(); };
+        help.Text = "Sign-in help"; help.Location = new Point(182, 72); help.Size = new Size(130, 32);
+        help.Enabled = false;
         help.Click += delegate { ShowHelp(); };
-        var minimize = new Button { Text = "Minimize to tray", Location = new Point(166, 72), Size = new Size(150, 30) };
+        var minimize = new Button { Text = "Minimize to tray", Location = new Point(322, 72), Size = new Size(150, 32) };
         minimize.Click += delegate { Hide(); };
-        footer.SetBounds(22, 112, 1136, 26);
+        var config = new Button { Text = "Open configuration", Location = new Point(482, 72), Size = new Size(170, 32) };
+        config.Click += delegate {
+            string path = AccountConfiguration.DefaultPath(appDirectory);
+            if (!File.Exists(path)) { MessageBox.Show(this, "Use Manage accounts to add your first account.", "Account setup"); return; }
+            try { Process.Start(new ProcessStartInfo("notepad.exe", "\"" + path + "\"") { UseShellExecute = true }); }
+            catch (Exception) { MessageBox.Show(this, "Open this file in a text editor: " + path, "Account configuration"); }
+        };
+        footer.SetBounds(22, 112, 1136, 54);
         footer.Anchor = AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right;
         footer.ForeColor = Color.FromArgb(87, 100, 119);
-        bottom.Controls.AddRange(new Control[] { detail, help, minimize, footer });
+        bottom.Controls.AddRange(new Control[] { detail, manage, help, minimize, config, footer });
 
         var table = new Panel { Dock = DockStyle.Fill, Padding = new Padding(22, 0, 22, 0) };
         grid.Dock = DockStyle.Fill;
@@ -126,6 +137,23 @@ public sealed class WeeklyUsage : Form {
         grid.CellPainting += PaintUsage;
         grid.SelectionChanged += delegate { ShowDetail(); };
         table.Controls.Add(grid);
+        welcome.Dock = DockStyle.Fill; welcome.BackColor = Color.White;
+        welcome.Controls.Add(new Label { Text = "See your first account in one place", Location = new Point(24, 30),
+            AutoSize = true, Font = new Font("Segoe UI", 17, FontStyle.Bold) });
+        welcome.Controls.Add(new Label { Text = "Add an account you already use in a supported CLI.\r\nYour login stays with its provider. This app reads quota only.",
+            Location = new Point(26, 85), Size = new Size(730, 56) });
+        first.Text = "Add your first account"; first.Location = new Point(26, 152); first.Size = new Size(210, 40);
+        first.BackColor = accent; first.ForeColor = Color.White; first.FlatStyle = FlatStyle.Flat;
+        first.Click += async delegate { await ManageAccounts(); };
+        welcome.Controls.Add(first);
+        var nodeLink = new LinkLabel { Text = "Requires Node.js 20+ and an existing CLI login. Get Node.js", Location = new Point(26, 212),
+            Size = new Size(730, 40) };
+        nodeLink.LinkClicked += delegate {
+            try { Process.Start(new ProcessStartInfo("https://nodejs.org/en/download") { UseShellExecute = true }); }
+            catch (Exception) { MessageBox.Show(this, "Visit https://nodejs.org/en/download to install Node.js 20 or newer.", "Node.js required"); }
+        };
+        welcome.Controls.Add(nodeLink);
+        table.Controls.Add(welcome); welcome.BringToFront(); grid.Visible = false;
         Controls.Add(table); Controls.Add(bottom); Controls.Add(header);
 
         tray.Icon = Icon;
@@ -144,6 +172,9 @@ public sealed class WeeklyUsage : Form {
         clock.Interval = 60000;
         clock.Tick += delegate { Render(); };
         Shown += async delegate {
+            try {
+                if (AccountConfiguration.Open(AccountConfiguration.DefaultPath(appDirectory)).Accounts.Count == 0) { ShowWelcome(); return; }
+            } catch (Exception e) { ShowWelcome(); refreshError = e.Message + " Use Open configuration to repair it."; UpdateFooter(); return; }
             try { LoadSnapshot(File.ReadAllText(Path.Combine(appDirectory, "usage-cache.json"))); } catch { }
             clock.Start();
             await RefreshUsage();
@@ -174,6 +205,7 @@ public sealed class WeeklyUsage : Form {
     async Task RefreshUsage() {
         if (busy || closing) return;
         busy = true; refresh.Enabled = false; refresh.Text = "Refreshing...";
+        manage.Enabled = first.Enabled = false;
         schedule.Stop(); refreshError = ""; UpdateFooter();
         try {
             string json = await Task.Run(async () => {
@@ -209,6 +241,7 @@ public sealed class WeeklyUsage : Form {
             busy = false;
             if (!closing) {
                 refresh.Enabled = true; refresh.Text = "Refresh now";
+                manage.Enabled = first.Enabled = true;
                 nextRefresh = DateTimeOffset.UtcNow.AddMinutes(15);
                 schedule.Start(); Render();
             }
@@ -217,6 +250,14 @@ public sealed class WeeklyUsage : Form {
     void LoadSnapshot(string json) {
         var data = new JavaScriptSerializer().Deserialize<Snapshot>(json);
         if (data == null || data.accounts == null || data.accounts.Count == 0) throw new Exception("Invalid snapshot.");
+        var configured = AccountConfiguration.Open(AccountConfiguration.DefaultPath(appDirectory)).Accounts;
+        data.accounts.RemoveAll(a => a == null || !configured.Exists(item => item.provider == a.provider &&
+            string.Equals(item.email, a.email, StringComparison.OrdinalIgnoreCase)));
+        if (data.accounts.Count == 0) throw new Exception("No cached accounts match the current configuration.");
+        foreach (Account account in data.accounts) {
+            var settings = configured.Find(item => item.provider == account.provider && string.Equals(item.email, account.email, StringComparison.OrdinalIgnoreCase));
+            account.label = settings.label;
+        }
         snapshot = data; Render();
     }
     static bool IsPast(string value) {
@@ -238,6 +279,7 @@ public sealed class WeeklyUsage : Form {
     void Render() {
         if (closing) return;
         if (snapshot == null) { UpdateFooter(); return; }
+        welcome.Visible = false; grid.Visible = true;
         string selected = grid.CurrentRow == null ? null : ((Account)grid.CurrentRow.Tag).id;
         grid.Rows.Clear(); int live = 0;
         foreach (Account a in snapshot.accounts) {
@@ -255,7 +297,8 @@ public sealed class WeeklyUsage : Form {
         ShowDetail(); UpdateFooter();
     }
     void ShowDetail() {
-        if (grid.CurrentRow == null || grid.CurrentRow.Tag == null) return;
+        help.Enabled = grid.CurrentRow != null && grid.CurrentRow.Tag != null;
+        if (!help.Enabled) return;
         var a = (Account)grid.CurrentRow.Tag;
         string shortWindow = a.session != null && a.session.used.HasValue && !IsPast(a.session.reset)
             ? a.sessionLabel + ": " + Pct(a.session.used) + " used. Resets " + Local(a.session.reset) + ".  " : "";
@@ -266,18 +309,53 @@ public sealed class WeeklyUsage : Form {
         if (closing) return;
         long memory = Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
         footer.Text = refreshError.Length > 0 ? refreshError : busy ? "Reading account usage..." :
+            snapshot == null ? "Add an account to check its quota. No passwords or API keys are needed here." :
             "Next refresh: " + nextRefresh.ToLocalTime().ToString("HH:mm") + "   |   Dashboard RAM: " + memory +
             " MB   |   Closing this window exits. Minimize keeps automatic refresh active.";
     }
     void ShowHelp() {
         var a = grid.CurrentRow == null ? null : grid.CurrentRow.Tag as Account;
-        string command = a == null ? "Open the account's normal CLI." :
-            a.provider == "grok" ? "Run grok login with " + a.email + "." :
-            a.provider == "devin" ? "Run devin auth login with " + a.email + "." :
-            "Open " + a.provider + " with this account's config folder (CLAUDE_CONFIG_DIR or CODEX_HOME) and run /usage. If asked to sign in, use " + a.email + ".";
-        MessageBox.Show(this, command + Environment.NewLine + Environment.NewLine +
-            "Then click Refresh now. The dashboard reads existing logins and never switches your active account or changes credentials.",
-            "Account sign-in", MessageBoxButtons.OK, MessageBoxIcon.None);
+        if (a == null) return;
+        try {
+            var settings = AccountConfiguration.Open(AccountConfiguration.DefaultPath(appDirectory));
+            var account = settings.Accounts.Find(item => item.provider == a.provider && string.Equals(item.email, a.email, StringComparison.OrdinalIgnoreCase));
+            if (account == null) throw new Exception("This account is no longer configured. Click Refresh now.");
+            using (var dialog = new Form { Text = "Account sign-in", ClientSize = new Size(650, 340),
+                StartPosition = FormStartPosition.CenterParent, Font = Font, MinimizeBox = false, MaximizeBox = false }) {
+                var text = new TextBox { Text = AccountConfiguration.SignInHelp(account), Multiline = true, ReadOnly = true,
+                    ScrollBars = ScrollBars.Vertical, Location = new Point(18, 18), Size = new Size(614, 250),
+                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom, AccessibleName = "Sign-in instructions" };
+                var copy = new Button { Text = "Copy instructions", Location = new Point(18, 290), Size = new Size(170, 32), Anchor = AnchorStyles.Bottom | AnchorStyles.Left };
+                copy.Click += delegate { try { Clipboard.SetText(text.Text); copy.Text = "Copied"; } catch (ExternalException) { copy.Text = "Select and copy text"; } };
+                var close = new Button { Text = "Close", DialogResult = DialogResult.OK, Location = new Point(522, 290), Size = new Size(110, 32), Anchor = AnchorStyles.Bottom | AnchorStyles.Right };
+                dialog.Controls.AddRange(new Control[] { text, copy, close }); dialog.CancelButton = close;
+                dialog.ShowDialog(this);
+            }
+        } catch (Exception e) { MessageBox.Show(this, e.Message, "Account sign-in"); }
+    }
+    async Task ManageAccounts() {
+        if (busy) return;
+        try {
+            using (var setup = new AccountSetupForm(AccountConfiguration.DefaultPath(appDirectory))) {
+                if (setup.ShowDialog(this) != DialogResult.OK) return;
+            }
+            ShowWelcome();
+            if (AccountConfiguration.Open(AccountConfiguration.DefaultPath(appDirectory)).Accounts.Count == 0) return;
+            detail.Text = "Account settings saved. Checking your quota...";
+            summary.Text = "Checking configured accounts.";
+            clock.Start();
+            await RefreshUsage();
+        } catch (Exception e) {
+            if (!closing && !IsDisposed)
+                MessageBox.Show(this, e.Message + Environment.NewLine + "Use Open configuration to repair existing settings, then try again.", "Account setup");
+        }
+    }
+    void ShowWelcome() {
+        snapshot = null; grid.Rows.Clear(); grid.Visible = false; welcome.Visible = true;
+        schedule.Stop(); clock.Stop(); refreshError = ""; help.Enabled = false;
+        summary.Text = "Add one account to get started.";
+        detail.Text = "Choose a provider and confirm your existing login in account setup.";
+        UpdateFooter();
     }
     void PaintUsage(object sender, DataGridViewCellPaintingEventArgs e) {
         if (e.RowIndex < 0 || e.ColumnIndex != 3) return;
