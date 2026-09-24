@@ -3,10 +3,22 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node --test collect.test.cjs
-      - run: powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1
+      - name: Test collector and account configuration
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File test.ps1
+      - name: Build Windows dashboard
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File build.ps1
+      - name: Package portable preview
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File package.ps1 -Version "0.1.0-ci.${{ github.run_number }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weekly-ai-usage-portable
+          path: |
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error

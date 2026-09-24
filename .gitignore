@@ -3,3 +3,4 @@ usage-cache.json
 *.tmp
 *.exe
 *.bak*
+dist/
