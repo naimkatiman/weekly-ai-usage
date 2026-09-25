@@ -47,14 +47,14 @@ function Remove-TestInstallation {
     if (Test-Path -LiteralPath $taskUninstaller) {
         Invoke-TestProgram $taskUninstaller @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', ('/LOG="' + (Join-Path $taskRoot 'uninstall.log') + '"'))
         $taskDeadline = [DateTime]::UtcNow.AddSeconds(15)
-        while ((Test-Path -LiteralPath $taskUninstallKey) -and [DateTime]::UtcNow -lt $taskDeadline) { Start-Sleep -Milliseconds 100 }
+        while (((Test-Path -LiteralPath $taskUninstallKey) -or (Test-Path -LiteralPath $taskUninstaller)) -and [DateTime]::UtcNow -lt $taskDeadline) { Start-Sleep -Milliseconds 100 }
     }
 }
 
 try {
     $taskArguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', ('/DIR="' + $taskInstallDirectory + '"'))
-    Invoke-TestProgram $taskInstaller ($taskArguments + ('/LOG="' + (Join-Path $taskRoot 'install.log') + '"'))
     $taskInstalled = $true
+    Invoke-TestProgram $taskInstaller ($taskArguments + ('/LOG="' + (Join-Path $taskRoot 'install.log') + '"'))
     $taskRegistered = Get-ItemProperty -LiteralPath $taskUninstallKey
     Assert-Installer ($taskRegistered.InstallLocation.TrimEnd('\') -eq $taskInstallDirectory.TrimEnd('\')) 'per-user uninstall entry points to test installation'
     Assert-Installer (Test-Path -LiteralPath $taskShortcut) 'Start Menu shortcut exists'
@@ -102,5 +102,5 @@ try {
     Write-Output ('Installer signature: ' + (Get-AuthenticodeSignature -LiteralPath $taskInstaller).Status)
 }
 finally {
-    if ($taskInstalled -or (Test-Path -LiteralPath $taskUninstaller)) { Remove-TestInstallation }
+    if ($taskInstalled) { Remove-TestInstallation }
 }
