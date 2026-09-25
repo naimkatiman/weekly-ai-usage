@@ -1,6 +1,8 @@
 Troubleshooting
 ===============
 
+The preview installer is not code-signed. Windows may show an unknown-publisher or SmartScreen prompt. The release page provides a SHA256 checksum for the published file. If your organization's policy requires signed installers, this preview does not meet that requirement.
+
 Start with one account. A successful setup ends with the correct email, a Live state and a weekly reading. Find existing login only identifies a local profile; it does not validate the provider session.
 
 Installed app will not start or Node.js was not found
