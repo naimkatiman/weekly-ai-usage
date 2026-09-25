@@ -7,6 +7,8 @@ Check before your next coding session. Weekly AI Usage puts the reported weekly 
 
 Windows 10 or 11, x64. Preview v0.2.0-preview.1. The installer includes Node.js; no separate Node.js installation is required. You need a supported provider CLI that you have already signed into. [Release notes and checksums](https://github.com/naimkatiman/weekly-ai-usage/releases).
 
+This preview is not code-signed. Windows may show an unknown-publisher or SmartScreen prompt.
+
 ![Dashboard with three accounts and account management controls](docs/screenshot.png)
 
 Synthetic demo data. These readings illustrate the UI and are not live account results.
