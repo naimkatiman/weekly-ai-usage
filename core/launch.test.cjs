@@ -157,13 +157,13 @@ test('Claude local, project and managed API auth settings block without rewritin
   assert.throws(() => assertCompatibleSettings(profile, root, { env, managedPaths: [] }), /could not be checked/);
 });
 
-test('executable lookup uses absolute PATH locations and macOS GUI fallback paths', t => {
+test('executable lookup uses absolute host paths and the per-user CLI location', t => {
   const { root } = fixture(t);
   const local = path.join(root, '.local', 'bin');
   fs.mkdirSync(local, { recursive: true });
-  const file = path.join(local, 'codex');
+  const file = path.join(local, process.platform === 'win32' ? 'codex.cmd' : 'codex');
   fs.writeFileSync(file, '#!/bin/sh\nexit 0\n', { mode: 0o700 });
-  assert.equal(resolveExecutable('codex', null, { HOME: root, PATH: '' }, { platform: 'darwin' }), fs.realpathSync.native(file));
+  assert.equal(resolveExecutable('codex', null, { HOME: root, PATH: '' }), fs.realpathSync.native(file));
   assert.equal(resolveExecutable('codex', 'relative', {}, { platform: 'darwin' }), null);
   assert.equal(resolveExecutable('unknown', file, {}, { platform: 'darwin' }), null);
 });
@@ -253,7 +253,7 @@ test('Windows npm CMD shim resolves to direct Node execution preserving shell me
   const { plan } = prepareLaunch({ ...profile, cli: shim }, { env, args: [output, ...args] });
   const file = planFile(root, plan);
   assert.equal(plan.executable, process.execPath);
-  assert.equal(plan.args[0], script);
+  assert.equal(plan.args[0], fs.realpathSync.native(script));
   const result = await runPlan(file, { env, stdio: 'ignore' });
   assert.equal(result.code, 0);
   assert.deepEqual(JSON.parse(fs.readFileSync(output, 'utf8')), args);
