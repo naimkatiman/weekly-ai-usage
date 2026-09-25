@@ -43,7 +43,7 @@ test('privacy is enabled initially and API responses omit local account details'
   for (const value of ['personal@example.com', f.home, f.workspace, f.cli]) assert.equal(JSON.stringify(state).includes(value), false);
   const shown = f.controller.setPrivacy(false).profiles[0];
   assert.equal(shown.email, 'personal@example.com');
-  assert.equal(shown.home, fs.realpathSync.native(f.home));
+  assert.equal(shown.home, f.home);
   assert.equal(shown.workspace, fs.realpathSync.native(f.workspace));
   assert.equal(shown.cli, fs.realpathSync.native(f.cli));
   assert.equal(f.controller.setPrivacy(true).profiles[0].email, undefined);
@@ -180,7 +180,7 @@ test('legacy import links existing folders without credential copies and reports
   const state = f.controller.importLegacy(file);
   assert.deepEqual(state.importResult, { imported: 2, skipped: 3 });
   const homes = f.controller.store.load().profiles.map(p => p.home).sort();
-  assert.deepEqual(homes, [fs.realpathSync.native(codex), fs.realpathSync.native(claude)].sort());
+  assert.deepEqual(homes, [codex, claude].sort());
   assert.equal(fs.existsSync(path.join(f.dataRoot, 'profiles')), false);
   assert.equal(fs.readFileSync(file, 'utf8'), content);
   assert.equal(fs.readFileSync(path.join(codex, 'auth.json'), 'utf8'), '{"synthetic":"codex"}');
