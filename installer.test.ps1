@@ -47,10 +47,24 @@ function Assert-OwnedTarget {
     }
 }
 function Invoke-TestProgram([string]$Label, [string]$File, [string[]]$Arguments, [int]$Timeout = 120000) {
+    Write-Output "Installer QA starting stage: $Label"
+    if (-not [IO.Path]::IsPathRooted($File) -or -not (Test-Path -LiteralPath $File -PathType Leaf)) {
+        throw "Installer QA executable is missing: $Label."
+    }
+    if (-not (Test-Path -LiteralPath $PSScriptRoot -PathType Container)) {
+        throw "Installer QA working directory is missing: $Label."
+    }
     $taskOut = Join-Path $taskRoot ($Label + '.stdout.log')
     $taskErr = Join-Path $taskRoot ($Label + '.stderr.log')
-    $taskProcess = Start-Process -FilePath $File -ArgumentList $Arguments -WorkingDirectory $PSScriptRoot `
-        -RedirectStandardOutput $taskOut -RedirectStandardError $taskErr -PassThru -WindowStyle Hidden
+    try {
+        $taskProcess = Start-Process -FilePath $File -ArgumentList $Arguments -WorkingDirectory $PSScriptRoot `
+            -RedirectStandardOutput $taskOut -RedirectStandardError $taskErr -PassThru -WindowStyle Hidden
+    } catch {
+        $taskCause = $_.Exception
+        while ($taskCause.InnerException) { $taskCause = $taskCause.InnerException }
+        $taskCode = if ($taskCause -is [ComponentModel.Win32Exception]) { $taskCause.NativeErrorCode } else { 'unknown' }
+        throw "Installer QA could not start stage: $Label (native error $taskCode)."
+    }
     try {
         # Windows PowerShell 5 can otherwise lose ExitCode after a redirected
         # child exits. Retain its native handle before waiting for termination.
@@ -63,6 +77,7 @@ function Invoke-TestProgram([string]$Label, [string]$File, [string[]]$Arguments,
         $taskExitCode = $taskProcess.ExitCode
         if ($null -eq $taskExitCode) { throw "Installer QA could not read the exit code: $Label." }
         if ($taskExitCode -ne 0) { throw "Installer QA stage failed: $Label (exit $taskExitCode)." }
+        Write-Output "Installer QA completed stage: $Label"
     } finally { $taskProcess.Dispose() }
 }
 function Assert-OwnedRegistration {
