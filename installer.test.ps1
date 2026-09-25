@@ -27,6 +27,7 @@ $taskUserPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
 $taskMachinePath = [Environment]::GetEnvironmentVariable('PATH', 'Machine')
 $taskInstalled = $false
 $taskUninstallAttempted = $false
+$taskFailure = $null
 $taskChecks = 0
 
 function Assert-Installer([bool]$Condition, [string]$Message) {
@@ -51,12 +52,17 @@ function Invoke-TestProgram([string]$Label, [string]$File, [string[]]$Arguments,
     $taskProcess = Start-Process -FilePath $File -ArgumentList $Arguments -WorkingDirectory $PSScriptRoot `
         -RedirectStandardOutput $taskOut -RedirectStandardError $taskErr -PassThru -WindowStyle Hidden
     try {
+        # Windows PowerShell 5 can otherwise lose ExitCode after a redirected
+        # child exits. Retain its native handle before waiting for termination.
+        [void]$taskProcess.Handle
         if (-not $taskProcess.WaitForExit($Timeout)) {
             try { $taskProcess.Kill($true) } catch { if (-not $taskProcess.HasExited) { $taskProcess.Kill() } }
             throw "Installer QA stage timed out: $Label"
         }
         $taskProcess.Refresh()
-        if ($taskProcess.ExitCode -ne 0) { throw "Installer QA stage failed: $Label (exit $($taskProcess.ExitCode))." }
+        $taskExitCode = $taskProcess.ExitCode
+        if ($null -eq $taskExitCode) { throw "Installer QA could not read the exit code: $Label." }
+        if ($taskExitCode -ne 0) { throw "Installer QA stage failed: $Label (exit $taskExitCode)." }
     } finally { $taskProcess.Dispose() }
 }
 function Assert-OwnedRegistration {
@@ -145,6 +151,15 @@ try {
     Assert-Installer ([Environment]::GetEnvironmentVariable('PATH', 'Machine') -eq $taskMachinePath) 'machine PATH stays unchanged'
     Write-Output "PASS: $taskChecks Electron installer lifecycle checks."
     Write-Output ('Installer signature: ' + (Get-AuthenticodeSignature -LiteralPath $taskInstaller).Status)
+} catch {
+    $taskFailure = $_
+    throw
 } finally {
-    if ($taskInstalled -and -not $taskUninstallAttempted) { Remove-TestInstallation }
+    if ($taskInstalled -and -not $taskUninstallAttempted) {
+        try { Remove-TestInstallation }
+        catch {
+            if (-not $taskFailure) { throw }
+            Write-Warning 'Installer QA cleanup also failed. The original stage failure is preserved.' -WarningAction Continue
+        }
+    }
 }
