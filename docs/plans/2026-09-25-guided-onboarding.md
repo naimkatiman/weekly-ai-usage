@@ -59,3 +59,30 @@ Each layer has a separate commit, at most 15 files and 500 changed lines. Split 
 - [v0.1.0-preview.1](https://github.com/naimkatiman/weekly-ai-usage/releases/tag/v0.1.0-preview.1) contains the portable ZIP, SHA256 file and optional 25-second captioned screenshot walkthrough. The video is labelled synthetic demo data throughout.
 - The public ZIP was downloaded without authentication and matched SHA256 `0e78d3e2a86b31bbda8f5d59593ed57f28807be38e318a242a13ec264ba1916c`.
 - LinkedIn copy remains a draft. The real-user usability gate above remains open.
+
+## September 25 installer follow-up
+
+The owner requested a Windows installer instead of ZIP-first distribution, less setup friction and clearer problem-solving copy. This extends the same onboarding goal.
+
+Assumptions and approved implementation:
+
+- Keep the existing application stack. Bundle the existing Node runtime dependency so the installed app does not need Node on PATH.
+- Build with Inno Setup already installed on GitHub's Windows runner. Do not install a new compiler on the owner's machine.
+- Install per user under LocalAppData with a Start Menu shortcut and standard Windows uninstall entry. No administrator rights, automatic startup or PATH changes.
+- Keep account settings app-relative and honor WEEKLY_USAGE_CONFIG. Installer files must exclude accounts.json and usage-cache.json; upgrades and uninstall preserve user-created settings.
+- Pin the official Node 24 LTS runtime and verify its download checksum. Include upstream license notices.
+- Prefer the bundled runtime; retain the existing system-runtime fallback for source/portable users.
+- Lead the README and first-run UI with: "See which AI account has quota left." Explain that the app displays reported quota and reset times; it does not choose a provider or switch accounts automatically.
+- Publish a new installer preview after tests, review, CI and local installation checks. Existing CLI logins remain required. Do not modify the owner's LinkedIn post.
+
+Verification: existing collector/config/native tests; app runtime-selection tests; hosted installer build; install and upgrade into an isolated path; verify configuration preservation, shortcuts and uninstall registration; run the installed app's native checks using only its bundled runtime; uninstall and verify removal of installed files with settings retained. Verify the public installer download checksum and record signing status. Test data and installer registry entries must stay separate from any existing installation.
+
+Progress:
+
+- [x] Bundled-runtime support and problem-solving UI copy.
+- [ ] Installer definition, pinned runtime packaging and CI.
+- [ ] Installer-first documentation and updated launch assets.
+- [ ] Independent review and installation/upgrade/uninstall verification.
+- [ ] Merge, installer preview release and public download verification.
+
+Local source verification passed: 24 collector tests, 80 configuration assertions and 28 native checks, with warnings-as-errors compilation. Installer scripts pass syntax checks and independent review. Hosted build and installed-binary lifecycle verification remain required before publishing.
