@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Weekly AI Usage</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="renderer.js"></script>
+</head>
+<body>
+  <svg class="icon-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="icon-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m7 9 3 3-3 3m7 0h3"/></symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.5 8a7 7 0 0 1 11.7-3L20 8M4 16l2.8 3A7 7 0 0 0 18.5 16"/></symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v5c0 5-5 8.5-8 10-3-1.5-8-5-8-10V6l8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+    <symbol id="icon-folder" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h5l3 4h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  </svg>
+
+  <header class="app-header">
+    <span id="demo-label" class="status" hidden>Demo data</span>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">W</span><div><span class="brand-name">Weekly AI Usage</span><span class="brand-caption">Your agents, ready when you are.</span></div></div>
+    <button id="privacy-toggle" class="button button-quiet privacy-toggle" type="button" aria-pressed="true" title="Privacy mode hides account emails and saved paths">
+      <svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg><span id="privacy-label">Privacy on</span>
+    </button>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <div><p class="eyebrow">A little less account juggling</p><h1 id="page-title">See your quota.<br>Open the account you need.</h1><p class="intro-copy">Choose an account and start in your project.<br class="wide-only"> Your other terminals keep working.</p></div>
+      <div class="intro-actions"><button id="launch-default" class="button button-primary" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#icon-terminal"/></svg><span id="launch-default-label">Open default account</span></button><button id="add-profile" class="button button-primary" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-plus"/></svg>Add account</button></div>
+    </section>
+
+    <div class="section-bar"><div><h2>Your accounts</h2><p id="account-summary">Loading your accounts...</p></div><button id="refresh-usage" class="button button-quiet" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg><span id="refresh-label">Refresh usage</span></button></div>
+    <div id="app-notice" class="notice" role="status" aria-live="polite" hidden></div>
+    <section id="empty-state" class="empty-state" aria-labelledby="empty-title" hidden>
+      <div class="empty-symbol" aria-hidden="true"><svg class="icon"><use href="#icon-terminal"/></svg></div>
+      <h2 id="empty-title">Your next session starts here.</h2>
+      <p>Add your first account with a nickname you recognize.<br>Link an existing login, or sign in with Codex or Claude Code.</p>
+      <button id="add-first-profile" class="button button-primary" type="button">Add your first account<svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+      <button id="import-empty" class="button button-text" type="button">Already use Weekly AI Usage? Import your accounts</button>
+    </section>
+    <section id="profile-grid" class="profile-grid" aria-label="Agent accounts" aria-busy="true"></section>
+    <footer class="page-footer"><span><svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg>Account settings stay on this device.</span><button id="import-profiles" class="button button-text" type="button">Import existing accounts</button></footer>
+    <p class="footer-note">Quota comes from each provider. Unavailable readings are never treated as remaining allowance.</p>
+  </main>
+
+  <dialog id="profile-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-description">
+    <form id="profile-form" novalidate>
+      <div class="dialog-header"><div><p class="eyebrow">Account setup</p><h2 id="dialog-title">Add an account</h2></div><button id="close-dialog" class="button button-icon" type="button" aria-label="Close account setup"><svg class="icon" aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+      <p id="dialog-description" class="muted">Choose a provider and give this account a familiar nickname.</p>
+      <div id="form-error" class="notice notice-error" role="alert" hidden></div>
+      <div class="form-row"><label>Provider<select id="profile-provider" name="provider"><option value="codex">Codex</option><option value="claude">Claude Code</option><option value="grok">Grok</option><option value="devin">Devin</option></select></label><label>Nickname<input id="profile-label" name="label" maxlength="80" placeholder="Personal or Work" autocomplete="off" required></label></div>
+      <fieldset id="profile-mode"><legend>How would you like to add it?</legend><div class="mode-options"><label class="mode-option"><input type="radio" name="mode" value="new" checked><span><strong>New isolated account</strong><small>Sign in with the provider after saving.</small></span></label><label class="mode-option"><input type="radio" name="mode" value="default"><span><strong>Use existing default login</strong><small>Open the account your provider CLI already uses.</small></span></label><label class="mode-option"><input type="radio" name="mode" value="link"><span><strong>Link existing folder</strong><small>Keep your current account files in place.</small></span></label></div></fieldset>
+      <div id="capability-note" class="help-panel" hidden></div>
+      <div id="home-field" class="folder-field" hidden><span class="field-label" id="home-label">Existing profile folder</span><button id="choose-home" class="folder-button" type="button" aria-labelledby="home-label home-value"><svg class="icon" aria-hidden="true"><use href="#icon-folder"/></svg><span id="home-value">Choose profile folder</span><span class="folder-action">Browse</span></button><p id="home-help" class="field-help">Your login stays in this folder. Nothing is copied.</p></div>
+      <div class="folder-field"><span class="field-label" id="workspace-label">Project folder <span class="optional">optional</span></span><button id="choose-workspace" class="folder-button" type="button" aria-labelledby="workspace-label workspace-value"><svg class="icon" aria-hidden="true"><use href="#icon-folder"/></svg><span id="workspace-value">Choose where your terminal opens</span><span class="folder-action">Browse</span></button><p class="field-help">You can change this before your next session.</p></div>
+      <details id="advanced-settings"><summary>Advanced</summary><div class="folder-field"><label class="field-label" for="profile-email">Account email <span class="optional">optional</span></label><input id="profile-email" name="email" type="email" maxlength="254" placeholder="person@example.com" inputmode="email" autocomplete="off" spellcheck="false" aria-describedby="email-help"><p id="email-help" class="field-help">Optional identity check. Codex and Claude Code accounts can be detected after sign-in.</p></div><div class="folder-field"><span class="field-label" id="cli-label">CLI executable <span class="optional">optional</span></span><button id="choose-cli" class="folder-button" type="button" aria-labelledby="cli-label cli-value"><svg class="icon" aria-hidden="true"><use href="#icon-terminal"/></svg><span id="cli-value">Detect automatically</span><span class="folder-action">Browse</span></button><p class="field-help">Use an installed provider CLI. The app does not install agents for you.</p></div></details>
+      <div id="remove-confirmation" class="help-panel removal-confirmation" hidden><p>Remove this account from the app? Its login and files will stay on this device.</p><div><button id="confirm-remove" class="button button-danger" type="button">Remove from app</button><button id="cancel-remove" class="button button-quiet" type="button">Keep account</button></div></div>
+      <div class="dialog-footer"><button id="remove-profile" class="button button-text danger-text" type="button" hidden>Remove from app</button><div class="dialog-footer-actions"><button id="cancel-dialog" class="button button-secondary" type="button">Cancel</button><button id="save-profile" class="button button-primary" type="submit">Add account</button></div></div>
+      <p id="save-hint" class="field-help dialog-hint">Saving creates the account entry. Sign in through the provider to connect it.</p>
+    </form>
+  </dialog>
+  <div id="live-announcement" class="visually-hidden" role="status" aria-live="polite"></div>
+</body>
+</html>
