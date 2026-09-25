@@ -97,3 +97,82 @@ Local source verification passed: 24 collector tests, 80 configuration assertion
 - Installer signing status is NotSigned, disclosed in README and release notes. No signing certificate or other paid service was purchased.
 - The README, first-run UI and repository description lead with quota availability. The original LinkedIn post was published by the owner; the new installer follow-up remains a draft. The old portable-release video is labelled historical rather than reused with its outdated separate-Node requirement.
 - Real-user timing and new live provider sign-ins remain unverified.
+
+## Account launcher and macOS proposal, September 25
+
+Status: approved by the owner's "approve" reply on September 25. Electron and necessary packaging dependencies are authorized. Implementation starts from `c3f807b23e487672239e9d80cc0fea81cbbf493e`; private profile stores remain untouched. This extends the existing onboarding roadmap.
+
+Product goal: see remaining quota and open an agent with the chosen account, without interrupting other account sessions. Keep Weekly AI Usage as the repository and released product until a rename is explicitly requested.
+
+### First user journey
+
+1. Install the desktop app and let it detect installed supported CLIs.
+2. Add an account using a nickname such as Personal or Work. Either link an existing profile folder, or run the provider's own login in a new isolated profile.
+3. See reported quota and reset times where supported. Unknown usage stays unavailable.
+4. Choose Open terminal with this account. Only that new process receives the selected profile environment. Existing terminals and shared defaults remain untouched.
+
+Use nicknames by default, with a local-only identity confirmation view. Remember the last workspace locally. A default selection means the default for future launches from this app, not a rewrite of the machine's shared CLI credentials.
+
+### Reuse decision
+
+A read-only audit of the existing local utility found two distinct mechanisms: process-local home selection in wrappers, and a separate credential snapshot/default-swap mechanism. The latter performs several credential/identity writes without an interprocess transaction and requires session restarts. Reuse the isolated-launch behavior through clean generic code. Do not copy private stores, account-specific launchers or machine paths into this repository.
+
+The current WinForms UI is Windows-only. Approved architecture: one Electron desktop UI on Windows and macOS, reusing the existing JavaScript quota logic behind a narrow, validated IPC boundary. Package local UI assets only; renderer sandbox and context isolation stay enabled, with Node integration disabled. Tokens and provider filesystem access stay outside the renderer. Electron adds a Chromium runtime and increases the installer footprint in return for one shared UI.
+
+Alternative if new dependencies are declined: keep the current Windows UI and add a shared CLI first. This does not deliver the same desktop experience on macOS; a separate native macOS frontend would still be needed.
+
+### Provider capabilities, not universal switching claims
+
+| Provider | Proposed first support | Verification boundary |
+| --- | --- | --- |
+| Codex | Isolated login and launch with CODEX_HOME; existing quota display | Preserve configured file/keyring backend and stable profile paths. |
+| Claude Code | Isolated login and launch with CLAUDE_CONFIG_DIR; Windows and macOS quota adapter | Current docs scope macOS Keychain entries by config directory. Verify supported CLI versions and conflicting auth settings. |
+| Grok | Existing quota support; add GROK_HOME launch after isolation tests | Verify background leader/socket separation and token refresh across profiles. |
+| Devin | Existing-login launch and current quota adapter where supported | Do not advertise multi-account switching until credential-store isolation is established. A separate config file alone is insufficient. |
+| Other agents | Explicit launch-only adapter when executable/arguments are known | Login isolation and quota remain unavailable until implemented and tested separately. |
+
+Adapters expose independent detect, connect, launch, usage and disconnect capabilities. Do not install arbitrary agent executables or plugins automatically. Normal CLI arguments must pass through unchanged where the adapter supports them.
+
+### Authentication and private-data boundaries
+
+- Keep real identities, profile paths, credentials, token caches and cloud secret names outside the repository, application bundle and release artifacts. Public fixtures and docs use synthetic profiles and example-domain identities only.
+- Link existing profile homes in place after local confirmation. Do not copy or move them automatically: macOS credential stores can bind identity to the home path.
+- Provider CLIs own login, logout and refresh. The app does not implement a second OAuth flow or snapshot live credentials into another account.
+- A subscription-profile launch must detect competing API-key/cloud authentication settings. Handle the chosen auth mode explicitly in the child environment; never log their values or silently label a different identity as selected.
+- Remove from this app only removes the local reference. Signing out or deleting a provider home is a separate explicit action.
+- Use restrictive OS file permissions, sanitized diagnostics and a privacy mode for screenshots. Redaction belongs at the source of logs/IPC, not only in the UI.
+- Before every public push, scan staged files and outgoing commits. Before release, scan unpacked bundles and diagnostics. Scan output reports locations/categories without echoing private values. Commit authorship uses a public no-reply identity.
+- Keep cloud-secret export, destructive profile removal and global credential swapping out of the first release. These are distinct authority and reliability concerns.
+
+### Delivery sequence
+
+1. Generic profile/launcher core and synthetic tests, including secure argv handling, inherited-auth conflicts, stable paths and no shared-default writes.
+2. Codex and Claude adapters; explicit local import by reference; provider-owned connect/reconnect.
+3. Shared desktop quota/launch UI and Windows/macOS terminal adapters, after framework approval. Preserve the existing installer/config migration path.
+4. macOS Keychain-aware quota reads, provider version gates and denied/locked-Keychain behavior. Read only the selected provider entry; never enumerate or dump the user's keychain.
+5. Windows installer and macOS app/DMG builds, artifact privacy checks, real-device login/concurrency validation, then a preview release. Public macOS distribution with minimal Gatekeeper friction needs signing/notarization credentials supplied by the owner; do not purchase services or bypass OS protections.
+6. Add further agents only when their individual capabilities are verified. Keep the capability labels honest when quota or switching is unavailable.
+
+### Acceptance checks
+
+- On Windows and macOS, connect two different profiles, run both simultaneously and confirm each identity locally. Renew or sign out of one and prove the other stays authenticated.
+- Compare shared default credential/config paths before and after launch/login/reconnect: no unexpected mutation. Do not claim concurrent refresh safety for multiple sessions sharing one profile without a separate test.
+- Verify process arguments with spaces, quotes and shell metacharacters; filenames or labels cannot inject shell commands.
+- Demonstrate import of an existing home without copying credentials, privacy-mode screenshots, and a complete export/log/artifact scan using only synthetic test data.
+- Exercise missing CLI, unsupported quota, revoked login, wrong identity, inherited auth overrides, and macOS Keychain denial/lock states without false Live/Ready indicators.
+- Run platform CI and real desktop trials. A macOS build artifact alone is not proof of account switching or Keychain interoperability.
+
+Research sources: [Codex authentication](https://developers.openai.com/codex/auth/), [Codex keyring implementation](https://github.com/openai/codex/blob/1f17a0a04b5c53ef2ea89b7d874764139321b26a/codex-rs/login/src/auth/storage.rs#L235), [Claude credential management](https://code.claude.com/docs/en/authentication#credential-management), [Grok profile settings](https://docs.x.ai/build/settings/reference#paths-and-auth), [Devin credential locations](https://docs.devin.ai/cli/enterprise/devin-auth#credentials-file-location), [Electron process model](https://www.electronjs.org/docs/latest/tutorial/process-model), [Electron security](https://www.electronjs.org/docs/latest/tutorial/security), [Apple notarization](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).
+
+Implementation checkpoints:
+
+- [x] Generic local profile store and isolated launch core, with synthetic concurrency tests.
+- [x] macOS credential adapters and preserved collector behavior.
+- [x] Shared desktop UI with restricted IPC and local-only private state.
+- [ ] Windows/macOS packaging, privacy gates and platform CI.
+- [ ] Independent review, release artifact checks and public preview delivery.
+- [ ] Owner-assisted live login/concurrency and signed macOS distribution validation.
+
+Implementation verification before platform CI: JavaScript syntax checks, collector/profile/controller/packaging/privacy suites pass on Windows. Native macOS Keychain testing is gated to macOS CI with a disposable synthetic keychain. The Windows packaged app passed 27 desktop checks, including its bundled terminal helper.
+
+Review corrections: preserve the exact Claude profile path for Keychain names; distinguish explicit profile directories from the bare default-login namespace; block reconnect against shared default files; include the namespace in cache identity; discard mismatched identities and stale asynchronous results; keep generated launch-file deletion confined to validated requests; never start a coding agent inside its credential folder. Existing agent-auth homes can be linked only through an explicit local import, with no credential copying.
