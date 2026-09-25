@@ -1,0 +1,73 @@
+name: desktop
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Desktop preview version
+        required: true
+        default: 0.3.0-preview.1
+permissions:
+  contents: read
+env:
+  PACKAGE_VERSION: ${{ inputs.version || format('0.3.0-ci.{0}', github.run_number) }}
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            platform: win32
+            arch: x64
+            executable: dist/Weekly AI Usage-win32-x64/WeeklyUsage.exe
+          - os: macos-15
+            platform: darwin
+            arch: arm64
+            executable: dist/Weekly AI Usage-darwin-arm64/Weekly AI Usage.app/Contents/MacOS/WeeklyUsage
+          - os: macos-15-intel
+            platform: darwin
+            arch: x64
+            executable: dist/Weekly AI Usage-darwin-x64/Weekly AI Usage.app/Contents/MacOS/WeeklyUsage
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.21.0
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Install the pinned Electron runtime
+        run: node node_modules/electron/install.js
+      - name: Verify host architecture
+        env:
+          EXPECTED_PLATFORM: ${{ matrix.platform }}
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: node -e "if(process.platform!==process.env.EXPECTED_PLATFORM||process.arch!==process.env.EXPECTED_ARCH)process.exit(1)"
+      - name: Check JavaScript syntax
+        run: npm run check
+      - name: Test collector, profile isolation and desktop contracts
+        run: npm test
+      - name: Scan public source
+        run: npm run privacy
+      - name: Exercise the desktop with synthetic accounts
+        run: npm run test:desktop
+      - name: Build and scan the native installer
+        run: npm run package:desktop
+      - name: Exercise the packaged desktop
+        run: node desktop/e2e.cjs --packaged "${{ matrix.executable }}"
+      - name: Verify Windows installation, upgrade and removal
+        if: matrix.platform == 'win32'
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File installer.test.ps1 -InstallerPath "dist/WeeklyAIUsage-${env:PACKAGE_VERSION}-Setup-x64.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weekly-ai-usage-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            dist/*-Setup-x64.exe
+            dist/*-Setup-x64.exe.sha256
+            dist/*-macOS-*.dmg
+            dist/*-macOS-*.dmg.sha256
+          if-no-files-found: error
