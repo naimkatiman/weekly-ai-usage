@@ -98,7 +98,7 @@ Local source verification passed: 24 collector tests, 80 configuration assertion
 - The README, first-run UI and repository description lead with quota availability. The original LinkedIn post was published by the owner; the new installer follow-up remains a draft. The old portable-release video is labelled historical rather than reused with its outdated separate-Node requirement.
 - Real-user timing and new live provider sign-ins remain unverified.
 
-## Account launcher and macOS proposal, September 25
+## Account launcher and macOS delivery, September 25
 
 Status: approved by the owner's "approve" reply on September 25. Electron and necessary packaging dependencies are authorized. Implementation starts from `c3f807b23e487672239e9d80cc0fea81cbbf493e`; private profile stores remain untouched. This extends the existing onboarding roadmap.
 
@@ -169,8 +169,8 @@ Implementation checkpoints:
 - [x] Generic local profile store and isolated launch core, with synthetic concurrency tests.
 - [x] macOS credential adapters and preserved collector behavior.
 - [x] Shared desktop UI with restricted IPC and local-only private state.
-- [ ] Windows/macOS packaging, privacy gates and platform CI.
-- [ ] Independent review, release artifact checks and public preview delivery.
+- [x] Windows/macOS packaging, privacy gates and platform CI.
+- [x] Independent review, release artifact checks and public preview delivery.
 - [ ] Owner-assisted live login/concurrency and signed macOS distribution validation.
 
 Implementation verification before platform CI: JavaScript syntax checks, collector/profile/controller/packaging/privacy suites pass on Windows. Native macOS Keychain testing is gated to macOS CI with a disposable synthetic keychain. The Windows packaged app passed 27 desktop checks, including its bundled terminal helper.
@@ -179,4 +179,16 @@ Review corrections: preserve the exact Claude profile path for Keychain names; d
 
 Platform verification, September 25: [native CI run](https://github.com/naimkatiman/weekly-ai-usage/actions/runs/36087190445) passed 104 applicable unit/contract tests, 24 development desktop checks and 27 packaged desktop checks on Windows x64, macOS arm64 and macOS x64. Both Mac jobs passed fully, including a disposable synthetic Keychain. Windows produced and scanned its Setup executable; its installer lifecycle harness exposed a missing process-exit code and requires correction before release. Path tests were corrected to distinguish preserved profile/project aliases from canonical executable paths. Independent launcher and packaging reviews found no remaining product blocker. Real provider sign-in and renewal were not exercised.
 
-Windows installer follow-up: the exact Setup artifact from [run 36087859960](https://github.com/naimkatiman/weekly-ai-usage/actions/runs/36087859960) matched its SHA256 and passed all 38 lifecycle checks plus 27 installed desktop checks on the owner's host using isolated synthetic data. Account/cache bytes survived reinstall and removal; program files, shortcut and registration were removed. PowerShell 5 process handles now retain exit codes, cleanup preserves the original error, and stage diagnostics identify failures without private paths. Hosted CI additionally exposed an ambiguous development Node lookup; its correction remains a release gate. These harness failures did not involve provider credentials.
+Windows installer follow-up: the exact Setup artifact from [run 36087859960](https://github.com/naimkatiman/weekly-ai-usage/actions/runs/36087859960) matched its SHA256 and passed all 38 lifecycle checks plus 27 installed desktop checks on the owner's host using isolated synthetic data. Account/cache bytes survived reinstall and removal; program files, shortcut and registration were removed. PowerShell 5 process handles now retain exit codes, cleanup preserves the original error, and stage diagnostics identify failures without private paths. Hosted CI additionally exposed an ambiguous development Node lookup, which was corrected before release. These harness failures did not involve provider credentials.
+
+Release verification: the Node lookup correction passed the [complete PR matrix](https://github.com/naimkatiman/weekly-ai-usage/actions/runs/36089253456), including all 38 Windows lifecycle checks. [PR #5](https://github.com/naimkatiman/weekly-ai-usage/pull/5) merged with its implementation layers preserved. The [v0.3.0-preview.1 build](https://github.com/naimkatiman/weekly-ai-usage/actions/runs/36089749676) used exact merged source `1a1c68899bdf2b928a03488bf148a9ff9590000b` and passed the same native matrix. Each platform passed 104 applicable unit/contract tests, 24 development desktop checks and 27 packaged desktop checks. Windows passed all 38 installed lifecycle checks. Both Mac jobs exercised a disposable synthetic Keychain and verified their ad-hoc app signatures. Release artifacts matched their generated SHA256 files after download.
+
+[v0.3.0-preview.1](https://github.com/naimkatiman/weekly-ai-usage/releases/tag/v0.3.0-preview.1) is published with the Windows Setup, Apple Silicon DMG and Intel DMG, plus SHA256 files. The final Windows Setup also passed all 38 lifecycle and 27 installed desktop checks on the owner's Windows host in an isolated directory. All new merged commit identities use public no-reply addresses. Source and app bundles passed privacy scans, and public demos use synthetic accounts. Windows remains unsigned; Mac apps remain ad-hoc signed and not notarized. Real provider login/concurrency/renewal on both platforms and first-time-user timing remain unverified. The follow-up LinkedIn text is a draft; no post was sent.
+
+Anonymous public downloads of all three artifacts and their checksum files matched the tested build bytes:
+
+| Asset | Bytes | SHA256 |
+| --- | ---: | --- |
+| Windows Setup x64 | 137791545 | `95742adabaa11114f81893305390980403534075cf8b265f809db88bdbcb8f60` |
+| macOS arm64 DMG | 184564206 | `d9dfb3bbefded98456fb981e771f2f5d32aab133baf0c12c217f06a3c2dc40bc` |
+| macOS x64 DMG | 193044442 | `aa682e17964a56370dfcdf20278ba0c63c478167321622eb575971e145a4b7ba` |
