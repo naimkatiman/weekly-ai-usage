@@ -85,7 +85,7 @@ The new app stores its own data separately:
 Preview verification
 --------------------
 
-Automated checks use synthetic accounts, including isolated profile/launcher tests and a private temporary Keychain on macOS CI. Real macOS provider sign-in, two-account concurrency and renewal have not been verified. A successful build or demo does not establish those results. First-time-user setup timing remains unmeasured.
+Automated checks use synthetic accounts, including isolated profile/launcher tests and a private temporary Keychain on macOS CI. Real provider sign-in, two-account concurrency and renewal have not been verified for this launcher on Windows or macOS. A successful build or demo does not establish those results. First-time-user setup timing remains unmeasured.
 
 The v0.1/v0.2 screenshots and videos describe earlier Windows releases. Use the current app for a new walkthrough; the [LinkedIn draft](docs/linkedin-preview.md) includes a recording plan.
 
