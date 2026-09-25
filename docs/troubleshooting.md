@@ -3,10 +3,21 @@ Troubleshooting
 
 Start with one account. A successful setup ends with the correct email, a Live state and a weekly reading. Find existing login only identifies a local profile; it does not validate the provider session.
 
-Node.js was not found
----------------------
+Installed app will not start or Node.js was not found
+----------------------------------------------------
 
-Install [Node.js 20 or newer](https://nodejs.org). Close Weekly AI Usage and open it again so it can pick up the updated PATH. In a new PowerShell window, run `node --version` to check the installation. If you installed Node.js manually, add its folder to PATH and restart the app.
+The Windows installer includes its own Node.js runtime. Close the app and run the installer again in the same location to restore missing app files. Your saved accounts and cache are preserved. Open Weekly AI Usage from the Start Menu. You do not need to install Node.js separately for the installed app.
+
+The installer supports Windows 10 or 11 on x64. Its default location is `%LOCALAPPDATA%\Programs\Weekly AI Usage`, under your Windows user. It does not need administrator rights or change PATH.
+
+For an older portable ZIP or a source build, install [Node.js 20 or newer](https://nodejs.org). Close Weekly AI Usage and open it again so it can pick up the updated PATH. In a new PowerShell window, run `node --version` to check the installation. If you installed Node.js manually, add its folder to PATH and restart the app.
+
+Installed app opens the old portable copy or has no accounts
+----------------------------------------------------------
+
+A second launch brings an already running copy forward. Exit the old portable copy with X before opening Weekly AI Usage from the Start Menu.
+
+The installer does not search for old account files. With both copies closed, copy only the old `accounts.json` into the installation folder, normally `%LOCALAPPDATA%\Programs\Weekly AI Usage`. If you already set `WEEKLY_USAGE_CONFIG`, retain that setting to use the existing file instead. Do not copy provider credential files. Open the installed app and confirm the correct account reaches Live before removing the old folder.
 
 No matching login or the wrong email
 -----------------------------------
@@ -30,13 +41,13 @@ Select the affected row and open Sign-in help. Use the displayed account and pro
 Configuration is invalid or cannot be saved
 ------------------------------------------
 
-The app preserves an unreadable or invalid configuration file instead of replacing it. Use Open configuration to inspect the file and make a backup before editing it. Check the file path shown in the app; `WEEKLY_USAGE_CONFIG` can point outside the extracted app folder.
+The app preserves an unreadable or invalid configuration file instead of replacing it. Use Open configuration to inspect the file and make a backup before editing it. Check the file path shown in the app; `WEEKLY_USAGE_CONFIG` can point outside the app folder.
 
 - Save the file as UTF-8, not UTF-16.
 - Use an `accounts` array with a supported `provider` and an `email` for every entry.
 - Each provider and email pair must be unique.
 - Use forward slashes or escaped backslashes in JSON paths. Comments and trailing commas are invalid JSON.
-- Keep the app and its default configuration in a writable folder, not Program Files or inside the ZIP.
+- Keep the app and its default configuration in a writable folder. The installer's default folder under LocalAppData is writable; Program Files and the inside of a ZIP are unsuitable for manual copies.
 
 Compare your file with `accounts.example.json`, repair it, then reopen Manage accounts. Do not overwrite your account list with the example. If another process changed the file after you opened the editor, close the editor and reopen it to load those changes before saving.
 
@@ -57,9 +68,14 @@ Only a Devin CLI login for `server.codeium.com` is supported. Enterprise and reg
 Window closed or updates stopped
 --------------------------------
 
-Minimize keeps the app in the tray. X exits it and stops checks. Open `WeeklyUsage.exe` again to resume. A second launch focuses the existing window if the app is already running.
+Minimize keeps the app in the tray. X exits it and stops checks. Open Weekly AI Usage from the Start Menu to resume, or open `WeeklyUsage.exe` for a portable copy. A second launch focuses the existing window if the app is already running.
+
+Account files remain after uninstall
+-----------------------------------
+
+Uninstall deliberately preserves user-created `accounts.json` and `usage-cache.json` so an uninstall or reinstall does not erase your account list. If you want to remove this data, uninstall first, then delete those files from the installation folder. If you use `WEEKLY_USAGE_CONFIG`, remove that external file only if you no longer need it. Provider CLI logins are stored separately and remain unchanged.
 
 Reporting a problem
 -------------------
 
-Include your Windows and Node.js versions, provider, app release version, and the exact error text. Remove email addresses and local paths from screenshots if you do not want to share them. Never attach provider credential files or tokens. `accounts.json` and `usage-cache.json` also contain account emails; review them before sharing anything.
+Include your Windows version, provider, app release version, whether you used the installer or a portable/source copy, and the exact error text. For a portable/source copy, also include `node --version`. Remove email addresses and local paths from screenshots if you do not want to share them. Never attach provider credential files or tokens. `accounts.json` and `usage-cache.json` also contain account emails; review them before sharing anything.
