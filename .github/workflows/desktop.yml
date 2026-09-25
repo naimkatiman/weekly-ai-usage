@@ -56,6 +56,7 @@ jobs:
       - name: Exercise the desktop with synthetic accounts
         run: npm run test:desktop
       - name: Build and scan the native installer
+        id: package
         run: npm run package:desktop
       - name: Exercise the packaged desktop
         run: node desktop/e2e.cjs --packaged "${{ matrix.executable }}"
@@ -63,6 +64,7 @@ jobs:
         if: matrix.platform == 'win32'
         run: powershell -NoProfile -ExecutionPolicy Bypass -File installer.test.ps1 -InstallerPath "dist/WeeklyAIUsage-${env:PACKAGE_VERSION}-Setup-x64.exe"
       - uses: actions/upload-artifact@v4
+        if: (success() || failure()) && steps.package.outcome == 'success'
         with:
           name: weekly-ai-usage-${{ matrix.platform }}-${{ matrix.arch }}
           path: |
