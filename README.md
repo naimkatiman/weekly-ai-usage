@@ -1,153 +1,112 @@
-﻿See which AI account has quota left
-==================================
+See quota and open the right agent account
+=========================================
 
-Check before your next coding session. Weekly AI Usage puts the reported weekly usage, remaining quota and reset times for your Claude, Codex, Grok and Devin accounts in one Windows tray dashboard. Keep separate rows for work and personal accounts.
+Weekly AI Usage helps you choose an account before starting work, then open it in your project without interrupting other sessions. Give accounts familiar nicknames such as Personal and Work. Check their reported allowance, choose one, and open a terminal.
 
-[Download for Windows](https://github.com/naimkatiman/weekly-ai-usage/releases/download/v0.2.0-preview.1/WeeklyAIUsage-0.2.0-preview.1-Setup-x64.exe)
+![Account quota and isolated launch controls](docs/screenshot.png)
 
-Windows 10 or 11, x64. Preview v0.2.0-preview.1. The installer includes Node.js; no separate Node.js installation is required. You need a supported provider CLI that you have already signed into. [Release notes and checksums](https://github.com/naimkatiman/weekly-ai-usage/releases).
+Synthetic demo data. Account emails and local paths are hidden.
 
-This preview is not code-signed. Windows may show an unknown-publisher or SmartScreen prompt.
+Preview v0.3.0-preview.1:
 
-![Dashboard with three accounts and account management controls](docs/screenshot.png)
+| Your computer | Download |
+| --- | --- |
+| Windows 10/11, x64 | [Windows Setup](https://github.com/naimkatiman/weekly-ai-usage/releases/download/v0.3.0-preview.1/WeeklyAIUsage-0.3.0-preview.1-Setup-x64.exe) |
+| macOS 13+, Apple Silicon | [Mac DMG, arm64](https://github.com/naimkatiman/weekly-ai-usage/releases/download/v0.3.0-preview.1/WeeklyAIUsage-0.3.0-preview.1-macOS-arm64.dmg) |
+| macOS 13+, Intel | [Mac DMG, x64](https://github.com/naimkatiman/weekly-ai-usage/releases/download/v0.3.0-preview.1/WeeklyAIUsage-0.3.0-preview.1-macOS-x64.dmg) |
 
-Synthetic demo data. These readings illustrate the UI and are not live account results.
+Both platforms include Node.js. You do not need to install it separately. Install your provider's CLI separately: [Codex](https://developers.openai.com/codex/cli/) 0.156.0 or newer, or [Claude Code](https://code.claude.com/docs/en/overview) 2.1.63 or newer, for isolated accounts.
 
-Get your first account working
-------------------------------
+Windows Setup is unsigned. The Mac app is ad-hoc signed and not notarized. Your operating system may block these previews or display publisher warnings. They do not meet policies that require verified publishers. [Release notes and SHA256 checksums](https://github.com/naimkatiman/weekly-ai-usage/releases).
 
-1. Download and run the installer above. Open Weekly AI Usage from the Start Menu after installation.
-2. Choose Add your first account, select its provider, then Find existing login. Confirm the email and choose Save account. For a custom profile, enter its folder first. Devin requires manual email entry.
-3. Check the account row. Live with a weekly reading means the provider returned its quota. You can see the remaining allowance and reset time, then select the account to inspect its shorter usage window when available.
+Start with one account
+----------------------
 
-A detected email alone does not prove that the provider accepts the login. If the row is Unavailable, select it and open Sign-in help. Follow the instructions for that account, then choose Refresh now. See [troubleshooting](docs/troubleshooting.md) for login, installation and other setup failures.
+1. Run Windows Setup, or open the matching Mac DMG and drag Weekly AI Usage into Applications.
+2. Open the app and choose Add account. Pick Codex or Claude Code, enter a nickname, and keep New isolated account selected. Choose your project folder if you want the terminal to start there.
+3. Save, then choose Sign in on the account card. Complete the provider's own login in the terminal/browser it opens.
+4. Return to the app and choose Refresh usage. Live means the provider supplied a usable quota reading. An unavailable reading does not prevent you from checking the account in its CLI.
+5. Choose Open terminal on the account you want to use.
 
-The installer works for your Windows user without administrator rights. It adds a Start Menu shortcut and installs under `%LOCALAPPDATA%\Programs\Weekly AI Usage` by default. It does not change PATH or enable automatic startup. The app reads your existing provider login; it does not sign you in.
+Already signed in? Choose Use existing default login to link the account your normal CLI uses. The app can open it, but cannot reconnect that shared login. To retain a custom profile, choose Link existing folder; its credentials stay where they are. See [troubleshooting](docs/troubleshooting.md) if an agent is missing or a login needs attention.
 
-Use Manage accounts to edit an account, or choose New account there to add another. A label such as Work or Personal is optional. Start with one account so you can confirm its reading before adding the rest.
+If no project folder is selected, the terminal starts in your user home. Account credential folders cannot be used as project folders.
 
-Minimize the window to keep it running in the tray. Closing the window with X exits the app. It checks on launch and every 15 minutes while running. Launching it again brings the existing window forward.
+![Account setup with separate and existing-login options](docs/onboarding.png)
 
-![First-run screen with Add your first account](docs/onboarding.png)
+Choose Use by default for your usual account. The main button and tray menu then open that account. This changes future launches from this app only. Existing terminals keep their selected account, and your normal CLI defaults stay unchanged.
 
-What it reads
--------------
+Minimize to keep the app in the tray or menu bar. Closing its window exits it. Quota refreshes on startup and every 15 minutes when the app is running.
 
-| Provider | Plan | Weekly window | Short window | Existing login |
-| --- | --- | --- | --- | --- |
-| Claude | Pro / Max | 7 day | 5 hour | Claude Code profile; default `~/.claude` plus `~/.claude.json` |
-| Codex | Plus / Pro | 7 day | 5 hour | `auth.json` in the Codex CLI home; default `~/.codex` |
-| Grok | SuperGrok | weekly credits | none | `auth.json` in the Grok profile; default `~/.grok` |
-| Devin | Pro / Max | weekly | daily | Installed Devin CLI's login at `server.codeium.com` only |
+Provider support
+----------------
 
-It only reads existing logins. It never refreshes tokens, switches accounts, sends prompts or spends credits. Find existing login reads local identity information; saving an account starts a network usage check. Tokens are sent only to their own provider's usage or identity endpoints. There is no shared dashboard service receiving them.
+| Provider | Account launch | Quota |
+| --- | --- | --- |
+| Codex | Separate login and terminal per isolated profile; existing default login can also be linked. | Weekly and 5-hour windows when reported. File credentials and selected macOS Keychain entries supported. |
+| Claude Code | Separate login and terminal per isolated profile; existing default login can also be linked. | Weekly and 5-hour windows when reported. File credentials and selected macOS Keychain entries supported. |
+| Grok | Existing default login only. Custom profile folders are usage-only; isolated switching is unavailable. | Weekly credits from an existing profile. Enter its account email under Advanced. |
+| Devin | Existing local login only; isolated switching and in-app sign-in are unavailable. | Weekly/daily quota where reported, for `server.codeium.com` logins only. Enter its email under Advanced. |
 
-Claude, Codex and Devin replies are checked against the configured email. Grok's usage reply has no identity, so Grok is matched using the email its CLI stored with the key. The app does not store tokens in `accounts.json` or `usage-cache.json`. Those files do contain account emails; the cache also contains readings and status information.
+Other agents are not supported in this release. Codex ephemeral and encrypted auth stores are not supported for quota reads. Unsupported storage, denied Keychain access and missing provider data produce Unavailable, never an invented allowance. Provider usage endpoints can change without notice.
 
-Understanding the readings
+| Reading | Meaning |
+| --- | --- |
+| Live | The provider returned a usable current reading. |
+| Stale | An earlier reading is displayed with its original capture time. |
+| Reset pending | The reported reset time passed; a fresh reading is needed. |
+| Unavailable | No usable reading. This does not mean zero usage or zero allowance. |
+
+Privacy and account safety
 --------------------------
 
-| State | Meaning |
+Privacy is on by default. Account cards use nicknames; emails and saved paths are excluded from the renderer's state. Click the Privacy on button to reveal details when you need to verify an identity. Provider terminals and browser login pages can still display your account details.
+
+Provider CLIs own sign-in and token renewal. The dashboard reads the selected profile and sends authentication only to that provider's identity/usage services. It never copies credentials into another profile, replaces a global login or uploads cloud secrets. Explicit profile folders never borrow credentials from the default login. Remove from app removes the reference, retaining the provider login and files.
+
+The public repository, tests and release demos use synthetic accounts. Your account information belongs only in local application/provider data. Local metadata can still contain private email addresses and folder paths; privacy mode does not encrypt those files.
+
+Upgrade from the Windows dashboard
+----------------------------------
+
+Close the old app and run the new Setup in its existing location. In the new app, choose Import existing accounts, select the old `accounts.json`, then confirm Import references. The old installer normally kept that file under `%LOCALAPPDATA%\Programs\Weekly AI Usage`. If you used `WEEKLY_USAGE_CONFIG`, select that file instead. Import is explicit and links existing folders; no provider credentials are copied or moved. Entries that cannot be imported are reported as skipped.
+
+If you already use `agent-auth`, Import existing accounts also offers to link its local Codex and Claude profile folders. Discovery reads directory names only. Credentials stay in place and already-linked folders are skipped. Account names and identities remain local.
+
+The new app stores its own data separately:
+
+| Platform | Application data |
 | --- | --- |
-| Live | The provider returned a current reading for this account. |
-| Stale | The latest check failed or the displayed reading is old. Its original capture time stays visible. A failed check can retain a previous reading for up to 24 hours. |
-| Reset pending | The reported reset time has passed. The app waits for a new provider reading instead of assuming 0%. |
-| Unavailable | No usable reading is available. Missing numbers are never displayed as zero. |
+| Windows | `%LOCALAPPDATA%\Weekly AI Usage` |
+| macOS | `~/Library/Application Support/Weekly AI Usage` |
 
-Select an account for its details and any error message. Use Refresh now after repairing a login or connection.
+`profile-store.json` holds account references and preferences. `quota-cache.json` holds recent readings. New isolated provider homes live under `profiles` in that directory. Keep those homes at stable paths, particularly for Claude's macOS Keychain entries. Updating or uninstalling the app retains this data. Removing that directory manually can remove managed provider logins too.
 
-Multiple accounts and custom profiles
-------------------------------------
-
-Each provider and email pair can appear once. Separate workspaces or organizations under the same email are not supported. Each account needs an existing CLI login that matches its email.
-
-For Claude and Codex, set Profile folder to the directory used by that account's CLI. A custom Claude profile contains `.credentials.json` and `.claude.json`; a custom Codex profile contains `auth.json`. Grok uses `auth.json` in its profile folder. The app does not move or create provider credentials. Use Sign-in help for the selected account's recovery instructions.
-
-For Devin, set the optional Devin CLI path if `devin.exe` is not on PATH. Only the default server login is supported; enterprise and regional logins are rejected.
-
-Manual configuration
+Preview verification
 --------------------
 
-The account editor creates `accounts.json` beside the app by default, normally in `%LOCALAPPDATA%\Programs\Weekly AI Usage` for an installed copy. Set `WEEKLY_USAGE_CONFIG` before launching the app to use a different file; the editor and collector both use it. Existing account settings and additional JSON fields are preserved when the editor saves. If another process changes the file, reopen Manage accounts before saving again.
+Automated checks use synthetic accounts, including isolated profile/launcher tests and a private temporary Keychain on macOS CI. Real macOS provider sign-in, two-account concurrency and renewal have not been verified. A successful build or demo does not establish those results. First-time-user setup timing remains unmeasured.
 
-For manual setup, copy `accounts.example.json` to `accounts.json`, replace the example email with your own, and choose Refresh now. The example contains one account:
-
-```json
-{
-  "accounts": [
-    { "provider": "claude", "email": "me@example.com" }
-  ]
-}
-```
-
-| Field | Required | Meaning |
-| --- | --- | --- |
-| `provider` | yes | `claude`, `codex`, `grok` or `devin` |
-| `email` | yes | The email of the existing provider login. |
-| `home` | no | That account's profile folder, for example `~/.codex-work`. Without it, the provider's default folder is used. |
-| `label` | no | Display label, for example `Work`. |
-| `plan` | no | Display name when the provider does not report one. |
-| `cli` | no | Devin only: path to `devin.exe` if it is not on PATH. |
-
-Save JSON as UTF-8. Use forward slashes in Windows paths, such as `C:/tools/devin.exe`, or double each backslash. Never put credentials or tokens in this file.
-
-Updates and removal
--------------------
-
-To update an installed copy, exit the app and run the new installer. It keeps your account settings and usage cache. Back up `accounts.json` before updating. If you set `WEEKLY_USAGE_CONFIG`, back up that file instead and keep the same setting when launching the new version. Release packages do not contain a real `accounts.json` or `usage-cache.json`.
-
-Moving from the old ZIP? Exit the old app first. Install the new version and clear Open Weekly AI Usage on the Finish screen. With both copies closed, copy only your old `accounts.json` into the installation folder, then open the installed app. If you already use `WEEKLY_USAGE_CONFIG`, keep it pointed at your existing configuration instead. There is no need to copy provider credential files or change their logins. The usage cache is optional and can be rebuilt by refreshing. Keep the old folder until the installed version reads your account correctly.
-
-To uninstall, exit the app and remove Weekly AI Usage through Windows Settings > Apps. Uninstall removes the app files and shortcuts but preserves user-created `accounts.json` and `usage-cache.json`. To remove those too, deliberately delete them from the installation folder after uninstalling. Remove an external configuration file only if you no longer need it. Provider CLI logins remain in their own folders and are unchanged.
-
-Portable ZIP and source users
-----------------------------
-
-The installer is the simplest setup. Earlier portable ZIPs remain available under [Releases](https://github.com/naimkatiman/weekly-ai-usage/releases) for manual use. They require [Node.js 20 or newer](https://nodejs.org) on PATH. Extract the entire ZIP to a writable folder, keep its files together, and open `WeeklyUsage.exe`.
-
-To update a portable copy manually, exit it, extract the new package to a new folder and copy `accounts.json`, or retain your external `WEEKLY_USAGE_CONFIG` setting. To remove a portable copy, exit it and delete its extracted folder; this also deletes any settings and cache inside that folder.
-
-Caveats
--------
-
-These are endpoints used by the provider CLIs, not public APIs. They can change without notice. Grok and Devin replies are decoded from protobuf with strict checks; malformed or ambiguous replies are reported as Unavailable.
-
-Devin's status call needs the native client's request fingerprint. The collector runs `devin auth status` through a short-lived loopback relay that forwards only two fixed read-only routes to `server.codeium.com`, then closes. It checks the login's server first and rejects enterprise or regional logins before forwarding credentials.
-
-Endpoint references: [CodexBar provider notes](https://github.com/steipete/CodexBar/tree/main/docs) for Claude, Codex and Grok.
-
-Build from source
------------------
-
-In PowerShell, with Git and Node.js 20 or newer installed:
-
-```powershell
-git clone https://github.com/naimkatiman/weekly-ai-usage.git
-Set-Location weekly-ai-usage
-powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
-.\WeeklyUsage.exe
-```
-
-The build uses the .NET Framework C# compiler included with Windows. No additional .NET SDK or package installation is needed. Keep the executable with the collector files.
+The v0.1/v0.2 screenshots and videos describe earlier Windows releases. Use the current app for a new walkthrough; the [LinkedIn draft](docs/linkedin-preview.md) includes a recording plan.
 
 Development
 -----------
 
-Run all tests, compile, then create the installer using an existing Inno Setup compiler:
+Use Node.js 24.21.0 and Git. After cloning this repository:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\test.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\installer.ps1 -Version 0.2.0-preview.1
+```sh
+npm ci --ignore-scripts
+node node_modules/electron/install.js
+npm test
+node --test scripts/package.test.cjs
+npm run privacy
+npm run test:desktop
+npm start
+npm run package:desktop
 ```
 
-The installer and SHA-256 checksum are written to `dist/WeeklyAIUsage-0.2.0-preview.1-Setup-x64.exe` and its `.sha256` file. The build downloads a pinned official Node.js 24 runtime, verifies its checksum and includes its license. The Windows CI runner has Inno Setup installed; for a custom compiler location, pass `-CompilerPath` or set `ISCC_PATH`. `package.ps1 -Version 0.2.0-preview.1` creates a portable ZIP for manual use instead.
+Build on the target Mac architecture, or Windows x64 with an existing Inno Setup 6 compiler. `ISCC_PATH` can select an existing compiler; the build does not install one. Packages and SHA256 files go into `dist`. The bundled Node archive is pinned and verified before extraction. Electron makes these installers larger than the earlier native Windows dashboard.
 
-`collect.cjs` builds the snapshot; `grok.cjs` and `devin.cjs` decode provider responses. The C# sources implement the window and account editor.
+Before a public push, run the privacy check against source and outgoing commits; use public no-reply commit authorship. Packaging scans an explicit file allowlist and the resulting app. Keep real profile stores, credentials and diagnostics out of fixtures and artifacts.
 
-Headless: after configuring an account, `node collect.cjs` prints the snapshot as JSON on Windows or Linux. On macOS, Claude Code uses the Keychain instead of `.credentials.json`, so Claude rows report no matching login.
-
-License
--------
-
-MIT. See [LICENSE](LICENSE). Tray icon: Lucide gauge geometry, Copyright (c) Lucide Contributors, ISC License.
+MIT. See [LICENSE](LICENSE). The legacy tray icon uses Lucide gauge geometry, ISC License.

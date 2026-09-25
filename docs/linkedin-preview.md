@@ -1,65 +1,45 @@
-LinkedIn installer follow-up
-===========================
+LinkedIn desktop preview draft
+===============================
 
-The owner has published the [original LinkedIn post](https://www.linkedin.com/feed/update/urn:li:activity:7509033966079840256/). The installer follow-up and comment below are prepared drafts. Neither has been posted by this work. Use them after the v0.2.0-preview.1 installer is published and its public download has been checked. The three-person onboarding test below remains unverified; no setup timing or new live provider compatibility is claimed here.
+The owner published the [original post](https://www.linkedin.com/feed/update/urn:li:activity:7509033966079840256/). The copy below is an unpublished follow-up. Use it only after the v0.3.0-preview.1 downloads and checksums are published and checked. Do not claim measured onboarding speed or verified real macOS account switching.
 
-Follow-up draft
----------------
+Post draft
+-----------
 
-Which AI account still has quota before I start another coding session?
+I wanted to answer one question before starting a coding session: which account should I open?
 
-Weekly AI Usage puts that answer in one Windows tray dashboard. See reported weekly usage, remaining quota and reset times across your Claude, Codex, Grok and Devin accounts, with separate rows for work and personal accounts.
+Weekly AI Usage now pairs the quota dashboard with an account launcher.
 
-The Windows preview now has an installer. No ZIP extraction or separate Node.js installation required.
+Give your Codex and Claude Code accounts names like Personal and Work. Check their reported quota, then open the chosen account in your project. Separate profiles keep existing terminals on the account they already use.
 
-Install the app, choose Add your first account, and select an existing provider login. Save it to check its quota. Devin requires manual email entry.
+You can sign into a new isolated profile through the provider, or link a login you already have. Your credentials stay on your device. Privacy mode hides account emails and saved paths in the dashboard by default.
 
-You need Windows 10 or 11 on x64 and a supported provider CLI you have already signed into. The dashboard reads that existing login and labels missing or stale readings clearly.
+The preview has a Windows installer and Mac downloads for Apple Silicon and Intel. Node.js is included. You still need the provider CLI installed.
 
-Try it before your next coding session. Tell me which step needs less effort.
+This is an early preview: Windows is unsigned, and the Mac app is not notarized. Real two-account login and renewal on Mac still need validation. Grok and Devin retain limited existing-login support.
 
-Download for Windows: https://github.com/naimkatiman/weekly-ai-usage/releases/download/v0.2.0-preview.1/WeeklyAIUsage-0.2.0-preview.1-Setup-x64.exe
+Try it before your next session and tell me where setup gets in your way.
+
+[Downloads and source](https://github.com/naimkatiman/weekly-ai-usage)
 
 Comment for the existing post
 -----------------------------
 
-Update: there is now a Windows installer. Node.js is included, so you do not need to install it separately. Install, add your existing AI account, and check its remaining weekly quota and reset time. Windows 10/11 x64 and an existing supported provider CLI login are required.
+Update: the next preview combines quota checks with isolated Codex and Claude Code account launches, plus Windows and Mac installers. Node.js is included. Windows is unsigned; Mac is not notarized, and real multi-account Mac login/renewal still needs validation. [Release notes and downloads](https://github.com/naimkatiman/weekly-ai-usage/releases).
 
-Download: https://github.com/naimkatiman/weekly-ai-usage/releases/download/v0.2.0-preview.1/WeeklyAIUsage-0.2.0-preview.1-Setup-x64.exe
+Recording plan, about 25 seconds
+--------------------------------
 
-Preview assets
---------------
+Use synthetic profiles and keep Demo data visible throughout. Keep Privacy on. Existing v0.1/v0.2 screenshots and videos describe the older Windows product and must not illustrate this release's onboarding.
 
-The `linkedin-preview.mp4` in v0.1.0-preview.1 is a historical 25-second captioned walkthrough made from native UI screenshots. It shows welcome, account setup, missing-login feedback and a synthetic quota dashboard. Its separate Node.js requirement describes the earlier portable release and is outdated for the installer. Do not reuse that video to explain the new installation flow.
-
-It is an illustrated preview, not a recording of a real provider sign-in. Use the storyboard below for a new installer walkthrough; do not claim it exists until recorded and reviewed.
-
-Demo recording, 25 seconds
--------------------------
-
-Use a clean demo configuration with addresses such as `personal@example.com` and `work@example.com`. Label synthetic readings "Demo data" on screen throughout. Never expose real account emails, provider credential files or tokens. Synthetic readings demonstrate the interface; they do not verify live provider compatibility.
-
-| Time | Picture | On-screen text |
+| Time | Recording | Caption |
 | --- | --- | --- |
-| 0-3 s | Open the dashboard from the tray. Show two demo account rows with different remaining quotas. | Which account has quota left? |
-| 3-7 s | Show the installer, then the Start Menu shortcut. Use an explicit cut between them. | Install on Windows. Node.js included. |
-| 7-12 s | Show first-run setup with Find existing login and Save account. | Add an account you already use |
-| 12-18 s | Return to the two-row dashboard. Select one row to show its shorter usage window and reset time. | Weekly quota and reset time |
-| 18-22 s | Show a Stale demo row with its capture time, then an Unavailable row. | Missing data stays visible |
-| 22-25 s | Minimize to the tray. End with the repository name and release link. | Windows preview. Existing CLI login required. |
+| 0-5 s | Show Personal and Work cards with different synthetic allowances. | Which account should I open? |
+| 5-11 s | Add an isolated account with a nickname and project folder. | Choose the account and project |
+| 11-17 s | Show Sign in, then cut explicitly to the populated demo dashboard. | Sign in through the provider |
+| 17-22 s | Open the selected demo account with a fake agent terminal; leave the other demo terminal visible. | Other sessions keep their account |
+| 22-25 s | Show the download choices. | Windows and Mac preview. Node.js included. |
 
-Keep account names and statuses large enough to read on a phone. Use short cuts instead of speeding through an actual setup. Do not add a stopwatch or imply that a 25-second video proves setup duration. Add captions so the demo works without audio.
+Do not record real credentials, private paths or login codes. A synthetic terminal demonstrates the interface, not provider interoperability. Add captions and use readable text rather than speeding through setup.
 
-Gate for the broader launch
---------------------------
-
-Status: unverified. Recruit three first-time Windows 10/11 x64 users who have one supported CLI login. At least one should have no separate Node.js installation. Give them only the release link and README. Record provider CLI installation and sign-in time separately if a participant starts without them.
-
-For each participant, record whether they independently:
-
-- Download and run the installer, open the app, add the intended account, and reach a verified Live reading within five minutes.
-- Recover from a missing login using the app's help and documentation.
-- Explain the difference between Live, Stale, Reset pending and Unavailable.
-- Minimize the app to keep it running and exit it intentionally.
-
-Record elapsed time, the step where help was needed, the provider and any error. Do not count a detected email or synthetic reading as a verified Live result. Ask what they expected at the point of confusion, then fix repeated obstacles before making an easy-onboarding claim.
+Before making an easy-onboarding claim, observe first-time users on both platforms. Record whether they can connect one account, recover from a missing login and explain an unavailable reading without help. Measure provider installation/sign-in separately. Verify two real accounts remain independent after one renews or reconnects; a CI fixture or screenshot cannot establish that result.

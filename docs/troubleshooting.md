@@ -1,83 +1,68 @@
-Troubleshooting
-===============
+Weekly AI Usage troubleshooting
+===============================
 
-The preview installer is not code-signed. Windows may show an unknown-publisher or SmartScreen prompt. The release page provides a SHA256 checksum for the published file. If your organization's policy requires signed installers, this preview does not meet that requirement.
+Start with one Codex or Claude Code account. Save a nickname, choose Sign in, complete the provider login, then Refresh usage. Reveal details locally if you need to confirm the email. A detected identity alone does not prove the provider accepts the login.
 
-Start with one account. A successful setup ends with the correct email, a Live state and a weekly reading. Find existing login only identifies a local profile; it does not validate the provider session.
+Installer or app is blocked
+---------------------------
 
-Installed app will not start or Node.js was not found
-----------------------------------------------------
+v0.3.0-preview.1 supports Windows 10/11 x64 and macOS 13 or newer. Choose the Apple Silicon or Intel DMG for your Mac. Both include Node.js; a separate Node installation is unnecessary for the desktop app.
 
-The Windows installer includes its own Node.js runtime. Close the app and run the installer again in the same location to restore missing app files. Your saved accounts and cache are preserved. Open Weekly AI Usage from the Start Menu. You do not need to install Node.js separately for the installed app.
+Windows Setup is unsigned. The Mac app has an ad-hoc signature and is not notarized. Publisher warnings or policy blocks are expected limitations of this preview. Verify the download against the release's SHA256 checksum. If your organization requires signed/notarized applications, wait for a suitable release or ask your administrator. Do not disable operating-system protections to install it.
 
-The installer supports Windows 10 or 11 on x64. Its default location is `%LOCALAPPDATA%\Programs\Weekly AI Usage`, under your Windows user. It does not need administrator rights or change PATH.
+On Windows, Setup uses `%LOCALAPPDATA%\Programs\Weekly AI Usage`, needs no administrator rights and does not modify PATH. On Mac, drag the app from its DMG into Applications before opening it. If installed files are missing, close the app and reinstall the same release. Keep the application data described below.
 
-For an older portable ZIP or a source build, install [Node.js 20 or newer](https://nodejs.org). Close Weekly AI Usage and open it again so it can pick up the updated PATH. In a new PowerShell window, run `node --version` to check the installation. If you installed Node.js manually, add its folder to PATH and restart the app.
+Agent missing or version unsupported
+------------------------------------
 
-Installed app opens the old portable copy or has no accounts
-----------------------------------------------------------
+Install or update the official provider CLI. Isolated Codex accounts require 0.156.0 or newer; Claude Code requires 2.1.63 or newer. The app checks the installed version before isolated login/launch. Its bundled Node runtime does not install the provider CLI for you.
 
-A second launch brings an already running copy forward. Exit the old portable copy with X before opening Weekly AI Usage from the Start Menu.
+If automatic detection misses an installed CLI, open the account editor, expand Advanced and choose its executable. Use the official executable or npm installation. Custom wrappers can redirect authentication and may be rejected. Installation guides: [Codex](https://developers.openai.com/codex/cli/) and [Claude Code](https://code.claude.com/docs/en/overview).
 
-The installer does not search for old account files. With both copies closed, copy only the old `accounts.json` into the installation folder, normally `%LOCALAPPDATA%\Programs\Weekly AI Usage`. If you already set `WEEKLY_USAGE_CONFIG`, retain that setting to use the existing file instead. Do not copy provider credential files. Open the installed app and confirm the correct account reaches Live before removing the old folder.
+Sign in is unavailable or the wrong account appears
+--------------------------------------------------
 
-No matching login or the wrong email
------------------------------------
+Use existing default login links the account your normal CLI uses. The app cannot reconnect that shared login. Open the provider normally to repair it, or create a New isolated account to sign into a different account without changing the default. Linking the default folder explicitly does not make it safe to reconnect a shared login.
 
-1. Open Manage accounts and check the provider, email and Profile folder.
-2. If you use a custom profile, enter the directory that holds that account's existing login, then select Find existing login. The app does not search every folder on your machine.
-3. For a saved account, select its row and open Sign-in help. Copy its instructions and run the relevant CLI command yourself. Sign in using the email shown for that account.
-4. Return to the dashboard and select Refresh now.
+For an isolated account, choose Sign in or Reconnect on its card and complete the provider login. Return and choose Refresh usage. A different detected email invalidates its old reading; reconnect the intended account instead of assuming the displayed quota belongs to the new login.
 
-Claude uses `~/.claude` by default, with identity information in `~/.claude.json`. In a custom Claude profile, the folder contains `.credentials.json` and `.claude.json`. Codex and Grok use `auth.json` in their profile folders. A profile path points at the folder, not the JSON file.
+If launch is blocked by authentication settings, review the named settings in the provider. API keys, cloud-provider configuration and other authentication overrides can take precedence over the selected subscription. The app does not delete those settings or rewrite your global profile. Avoid adding a second app entry for the same provider folder.
 
-An email detected from a local file may belong to an expired login. The dashboard's usage check determines whether it can read the account. If the provider reports a different identity, the reading is rejected. Check the selected login instead of relabelling another account's reading.
+macOS Keychain or unsupported credential storage
+------------------------------------------------
 
-Devin does not support local email detection in the account editor. Enter its email manually and use the optional Devin CLI path if the executable is not on PATH.
+The app reads only the selected provider's Keychain entry. Unlock your Keychain or allow the requested access, then refresh. A denied or locked entry does not produce a zero quota. Reconnect through the provider if its own login is expired.
 
-Expired login or access denied
------------------------------
+Keep linked and managed profile folders at stable paths. Claude's Keychain entry depends on its configured folder; moving or renaming that folder can disconnect it from the stored login. Link an existing folder where it already lives. Do not copy credential files between accounts.
 
-Select the affected row and open Sign-in help. Use the displayed account and profile when signing in through the provider CLI, then choose Refresh now. The dashboard never renews tokens for you. If the CLI itself cannot show usage, resolve that provider login or subscription issue first.
+Codex file credentials and direct macOS Keychain entries are supported. Ephemeral credentials exist only inside the running agent. Codex encrypted auth storage is not supported for dashboard quota reads. These cases show Unavailable; use the agent's usage view. Live provider login and renewal across two real macOS accounts remain unverified in this preview.
 
-Configuration is invalid or cannot be saved
-------------------------------------------
+Import an older Windows configuration
+-------------------------------------
 
-The app preserves an unreadable or invalid configuration file instead of replacing it. Use Open configuration to inspect the file and make a backup before editing it. Check the file path shown in the app; `WEEKLY_USAGE_CONFIG` can point outside the app folder.
+Choose Import existing accounts and select the old `accounts.json`, usually in `%LOCALAPPDATA%\Programs\Weekly AI Usage`. If you used `WEEKLY_USAGE_CONFIG`, select that file. Confirm Import references. There is no automatic search or private-data import.
 
-- Save the file as UTF-8, not UTF-16.
-- Use an `accounts` array with a supported `provider` and an `email` for every entry.
-- Each provider and email pair must be unique.
-- Use forward slashes or escaped backslashes in JSON paths. Comments and trailing commas are invalid JSON.
-- Keep the app and its default configuration in a writable folder. The installer's default folder under LocalAppData is writable; Program Files and the inside of a ZIP are unsuitable for manual copies.
+Import retains profile paths and leaves credentials in place. Missing folders, duplicate provider folders and unsupported entries are skipped. Review the reported counts, then add or repair any skipped account manually. The old JSON file remains unchanged. Old portable ZIPs and v0.1/v0.2 videos have different setup instructions.
 
-Compare your file with `accounts.example.json`, repair it, then reopen Manage accounts. Do not overwrite your account list with the example. If another process changed the file after you opened the editor, close the editor and reopen it to load those changes before saving.
+Grok and Devin limitations
+--------------------------
 
-Stale, Reset pending or Unavailable
-----------------------------------
+Enter the existing account's email under Advanced to read Grok or Devin quota. Grok custom profile folders support usage checks only; launching uses its existing default login. Separate Grok switching and in-app sign-in are unavailable. Devin also uses its existing local login, with no isolated account switching. Set its executable under Advanced if detection fails.
 
-Stale means the displayed reading is from an earlier successful check. Check its capture time and the account's error message. Restore connectivity or repair the login, then choose Refresh now. A failed check can retain a prior reading for up to 24 hours.
+Devin usage checks support `server.codeium.com` only. Enterprise and regional server logins are rejected before credentials are forwarded. Use the provider's own usage view for those accounts.
 
-Reset pending means the provider's reported reset time has passed. Wait for a fresh reading. The app does not assume the quota has returned to zero.
+Readings stopped or look old
+----------------------------
 
-Unavailable means there is no usable reading. It does not mean the account has used all its quota. Provider errors, an unsupported response or a missing weekly allowance can cause it. If the provider rate limits a check, wait for the next scheduled refresh.
+Stale retains the last reading and its capture time; readings older than 24 hours become Unavailable. Reset pending means the reported reset passed and a fresh response is needed. Unavailable means no usable data, not a known empty or full allowance. Refresh after fixing connectivity or login problems. A provider may also rate-limit checks.
 
-Devin enterprise or regional server
-----------------------------------
+Minimize keeps the app in the tray/menu bar. Closing its window exits it and stops refreshes. Reopen Weekly AI Usage to resume. The app refreshes on startup and every 15 minutes when running.
 
-Only a Devin CLI login for `server.codeium.com` is supported. Enterprise and regional logins are rejected before their credentials can be forwarded to that server. Use the provider's own usage view for those accounts. Do not change a login's server merely to bypass the check.
+Data, updates and removal
+-------------------------
 
-Window closed or updates stopped
---------------------------------
+Application data is under `%LOCALAPPDATA%\Weekly AI Usage` on Windows or `~/Library/Application Support/Weekly AI Usage` on Mac. `profile-store.json` contains references/preferences; `quota-cache.json` contains readings. Provider homes created by the app live under `profiles` there. Those homes may contain provider-managed credentials.
 
-Minimize keeps the app in the tray. X exits it and stops checks. Open Weekly AI Usage from the Start Menu to resume, or open `WeeklyUsage.exe` for a portable copy. A second launch focuses the existing window if the app is already running.
+Close the app before updating. Windows Setup preserves its application data and old unlogged configuration files; replacing the Mac app also retains its separate data directory. Remove from app deletes only the local reference. Uninstalling the desktop app does not sign out providers or delete their homes. Do not delete the data directory merely to clear a cached reading.
 
-Account files remain after uninstall
------------------------------------
-
-Uninstall deliberately preserves user-created `accounts.json` and `usage-cache.json` so an uninstall or reinstall does not erase your account list. If you want to remove this data, uninstall first, then delete those files from the installation folder. If you use `WEEKLY_USAGE_CONFIG`, remove that external file only if you no longer need it. Provider CLI logins are stored separately and remain unchanged.
-
-Reporting a problem
--------------------
-
-Include your Windows version, provider, app release version, whether you used the installer or a portable/source copy, and the exact error text. For a portable/source copy, also include `node --version`. Remove email addresses and local paths from screenshots if you do not want to share them. Never attach provider credential files or tokens. `accounts.json` and `usage-cache.json` also contain account emails; review them before sharing anything.
+To report a problem, include the app version, operating system, provider CLI version and sanitized error. Keep Privacy on for dashboard screenshots. Provider terminals and browsers may still show identity information. Never attach provider homes, `profile-store.json`, old `accounts.json`, token files or unreviewed diagnostics to a public issue.
