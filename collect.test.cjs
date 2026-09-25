@@ -20,29 +20,29 @@ test('roster comes from config with one id per provider login', () => {
 });
 test('invalid rosters are rejected with the offending entry', () => {
   for (const config of [null, {}, { accounts: [] }]) assert.throws(() => loadAccounts(config), /No accounts configured/);
-  assert.throws(() => loadAccounts({ accounts: [{ provider: 'gemini', email: 'a@b.com' }] }), /accounts\[0\]: provider/);
+  assert.throws(() => loadAccounts({ accounts: [{ provider: 'gemini', email: 'a@example.com' }] }), /accounts\[0\]: provider/);
   assert.throws(() => loadAccounts({ accounts: [{ provider: 'codex' }] }), /accounts\[0\]: email/);
-  assert.throws(() => loadAccounts({ accounts: [{ provider: 'codex', email: 'a@b.com' }, { provider: 'codex', email: 'A@B.com' }] }),
+  assert.throws(() => loadAccounts({ accounts: [{ provider: 'codex', email: 'a@example.com' }, { provider: 'codex', email: 'A@EXAMPLE.COM' }] }),
     /accounts\[1\]: duplicate/);
 });
 test('Codex recognizes weekly quota in either primary or secondary position', () => {
   const weekly = { used_percent: 74, limit_window_seconds: 604800, reset_at: 1790000000 };
   const session = { used_percent: 19, limit_window_seconds: 18000 };
   for (const [primary_window, secondary_window] of [[weekly, null], [session, weekly]]) {
-    const parsed = parseCodex({ email: 'a@b.com', rate_limit: { primary_window, secondary_window } }, 'a@b.com');
+    const parsed = parseCodex({ email: 'a@example.com', rate_limit: { primary_window, secondary_window } }, 'a@example.com');
     assert.equal(parsed.weekly.used, 74);
     assert.equal(parsed.weekly.remaining, 26);
   }
 });
 test('unknown windows and missing percentages are never displayed as zero', () => {
-  assert.equal(parseCodex({ email: 'a@b.com', rate_limit: { primary_window: { used_percent: 10, limit_window_seconds: 3600 } } }, 'a@b.com').weekly.used, null);
+  assert.equal(parseCodex({ email: 'a@example.com', rate_limit: { primary_window: { used_percent: 10, limit_window_seconds: 3600 } } }, 'a@example.com').weekly.used, null);
   for (const value of [null, undefined, '', '20', NaN, -1, 101]) assert.equal(quota(value, null).used, null);
   assert.equal(quota(0, null).remaining, 100);
 });
 test('rejects a provider result for a different account', () => {
-  assert.throws(() => checkEmail('wrong@b.com', 'a@b.com'), /identity mismatch/);
-  assert.throws(() => checkEmail(undefined, 'a@b.com'), /identity mismatch/);
-  assert.doesNotThrow(() => checkEmail('A@B.COM', 'a@b.com'));
+  assert.throws(() => checkEmail('wrong@example.com', 'a@example.com'), /identity mismatch/);
+  assert.throws(() => checkEmail(undefined, 'a@example.com'), /identity mismatch/);
+  assert.doesNotThrow(() => checkEmail('A@EXAMPLE.COM', 'a@example.com'));
 });
 test('Claude supports old and current weekly schema', () => {
   assert.equal(parseClaude({ seven_day: { utilization: 45, resets_at: future } }).weekly.remaining, 55);
@@ -54,10 +54,10 @@ test('Grok requires a weekly period and never substitutes paid on-demand usage',
   assert.equal(result.weekly.used, null);
 });
 test('Devin inverts remaining quota and honors hidden daily quota', () => {
-  const result = parseDevin({ userStatus: { email: 'a@b.com', planStatus: { weeklyQuotaRemainingPercent: 83, dailyQuotaRemainingPercent: 40, planInfo: { hideDailyQuota: true } } } }, 'a@b.com');
+  const result = parseDevin({ userStatus: { email: 'a@example.com', planStatus: { weeklyQuotaRemainingPercent: 83, dailyQuotaRemainingPercent: 40, planInfo: { hideDailyQuota: true } } } }, 'a@example.com');
   assert.equal(result.weekly.used, 17);
   assert.equal(result.session.used, null);
-  assert.equal(parseDevin({ userStatus: { email: 'a@b.com', planStatus: {} } }, 'a@b.com').weekly.used, null);
+  assert.equal(parseDevin({ userStatus: { email: 'a@example.com', planStatus: {} } }, 'a@example.com').weekly.used, null);
 });
 test('failed reads retain same-account data with its original timestamp and stale label', () => {
   const a = accounts[0], now = Date.parse('2030-09-15T00:00:00Z');
@@ -66,7 +66,7 @@ test('failed reads retain same-account data with its original timestamp and stal
   assert.equal(stale.status, 'Stale');
   assert.equal(stale.capturedAt, prior.capturedAt);
   assert.equal(stale.weekly.used, 45);
-  assert.equal(withStatus(a, null, 'fail', { ...prior, email: 'wrong@b.com' }, now + 60000).weekly.used, null);
+  assert.equal(withStatus(a, null, 'fail', { ...prior, email: 'wrong@example.com' }, now + 60000).weekly.used, null);
   assert.equal(withStatus(a, null, 'fail', prior, now + 86400001).weekly.used, null);
 });
 test('expired quota never implies a fresh allowance', () => {
@@ -89,8 +89,8 @@ function field(n, value) {
 test('Devin native wire response yields the correct account and quota, skips unknown fields', () => {
   const info = field(36, 1);
   const plan = Buffer.concat([field(1, info), field(15, 61), field(18, 1790000000)]);
-  const user = Buffer.concat([field(7, 'a@b.com'), field(13, plan), field(333, 'ignored')]);
-  const result = parseDevin(parseNative(field(1, user)), 'a@b.com');
+  const user = Buffer.concat([field(7, 'a@example.com'), field(13, plan), field(333, 'ignored')]);
+  const result = parseDevin(parseNative(field(1, user)), 'a@example.com');
   assert.equal(result.weekly.used, 39);
   assert.equal(result.weekly.reset, new Date(1790000000000).toISOString());
   assert.equal(result.session.used, null);
@@ -98,8 +98,8 @@ test('Devin native wire response yields the correct account and quota, skips unk
 test('Devin omitted proto scalar means exhausted only when the quota period exists', () => {
   for (const hasPeriod of [true, false]) {
     const plan = Buffer.concat([field(1, Buffer.alloc(0)), hasPeriod ? field(18, 1790000000) : Buffer.alloc(0)]);
-    const user = Buffer.concat([field(7, 'a@b.com'), field(13, plan)]);
-    const result = parseDevin(parseNative(field(1, user)), 'a@b.com');
+    const user = Buffer.concat([field(7, 'a@example.com'), field(13, plan)]);
+    const result = parseDevin(parseNative(field(1, user)), 'a@example.com');
     assert.equal(result.weekly.used, hasPeriod ? 100 : null);
   }
 });
@@ -196,11 +196,11 @@ test('config file errors name the real problem', t => {
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const file = path.join(dir, 'accounts.json');
   assert.throws(() => loadConfig(file), /not found/);
-  fs.writeFileSync(file, '\uFEFF{"accounts":[{"provider":"codex","email":"a@b.com"}]}');
+  fs.writeFileSync(file, '\uFEFF{"accounts":[{"provider":"codex","email":"a@example.com"}]}');
   assert.equal(loadConfig(file).accounts.length, 1);
-  fs.writeFileSync(file, '{"accounts":[{"provider":"devin","email":"a@b.com","cli":"C:\\Devin\\devin.exe"}]}');
+  fs.writeFileSync(file, '{"accounts":[{"provider":"devin","email":"a@example.com","cli":"C:\\Devin\\devin.exe"}]}');
   assert.throws(() => loadConfig(file), /is not valid JSON: .*forward slashes/);
-  fs.writeFileSync(file, '{"accounts":[{"provider":"codex","email":"a@b.com"},]}');
+  fs.writeFileSync(file, '{"accounts":[{"provider":"codex","email":"a@example.com"},]}');
   assert.throws(() => loadConfig(file), e => /is not valid JSON/.test(e.message) && !/forward slashes/.test(e.message));
   fs.writeFileSync(file, Buffer.from('\uFEFF{"accounts":[]}', 'utf16le'));
   assert.throws(() => loadConfig(file), /saved as UTF-16/);
@@ -208,17 +208,17 @@ test('config file errors name the real problem', t => {
 
 test('configured plan survives when the provider reports none', () => {
   const [devin, codex] = loadAccounts({ accounts: [
-    { provider: 'devin', email: 'a@b.com', plan: 'Pro' }, { provider: 'codex', email: 'a@b.com', plan: 'Plus' }] });
+    { provider: 'devin', email: 'a@example.com', plan: 'Pro' }, { provider: 'codex', email: 'a@example.com', plan: 'Plus' }] });
   const now = Date.parse('2030-09-15T00:00:00Z');
-  const status = { userStatus: { email: 'a@b.com', planStatus: { weeklyQuotaRemainingPercent: 50 } } };
-  assert.equal(withStatus(devin, parseDevin(status, 'a@b.com'), null, null, now).plan, 'Pro');
+  const status = { userStatus: { email: 'a@example.com', planStatus: { weeklyQuotaRemainingPercent: 50 } } };
+  assert.equal(withStatus(devin, parseDevin(status, 'a@example.com'), null, null, now).plan, 'Pro');
   status.userStatus.planStatus.planInfo = { planName: 'Max' };
-  assert.equal(withStatus(devin, parseDevin(status, 'a@b.com'), null, null, now).plan, 'Max');
-  assert.equal(withStatus(codex, parseCodex({ email: 'a@b.com' }, 'a@b.com'), null, null, now).plan, 'Plus');
+  assert.equal(withStatus(devin, parseDevin(status, 'a@example.com'), null, null, now).plan, 'Max');
+  assert.equal(withStatus(codex, parseCodex({ email: 'a@example.com' }, 'a@example.com'), null, null, now).plan, 'Plus');
 });
 
 test('stale rows keep the window label of their original reading', () => {
-  const [devin] = loadAccounts({ accounts: [{ provider: 'devin', email: 'a@b.com' }] });
+  const [devin] = loadAccounts({ accounts: [{ provider: 'devin', email: 'a@example.com' }] });
   const now = Date.parse('2030-09-15T00:00:00Z');
   const prior = withStatus(devin, { weekly: quota(20, future), session: quota(40, future), sessionLabel: 'Daily' }, null, null, now);
   assert.equal(withStatus(devin, null, 'fail', prior, now + 60000).sessionLabel, 'Daily');
