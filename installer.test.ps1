@@ -5,7 +5,13 @@ $taskInstaller = (Resolve-Path -LiteralPath $InstallerPath).Path
 if (-not (Test-Path -LiteralPath $taskInstaller -PathType Leaf) -or [IO.Path]::GetExtension($taskInstaller) -ne '.exe') {
     throw 'Installer QA requires the candidate Setup executable.'
 }
-$taskDevelopmentNode = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source
+# An explicit .exe name can return several ApplicationInfo matches in PowerShell
+# 5. Keep the first PATH match instead of joining multiple paths into one string.
+$taskDevelopmentNode = (Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+if ($taskDevelopmentNode -isnot [string] -or -not [IO.Path]::IsPathRooted($taskDevelopmentNode) -or
+    -not (Test-Path -LiteralPath $taskDevelopmentNode -PathType Leaf)) {
+    throw 'Installer QA requires one existing absolute Node executable.'
+}
 $taskAppKey = '{BCD80182-BC56-4F3D-9608-14E0F73C8493}_is1'
 $taskUninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\' + $taskAppKey
 $taskExistingKeys = @($taskUninstallKey,
