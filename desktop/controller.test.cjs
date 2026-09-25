@@ -44,7 +44,7 @@ test('privacy is enabled initially and API responses omit local account details'
   const shown = f.controller.setPrivacy(false).profiles[0];
   assert.equal(shown.email, 'personal@example.com');
   assert.equal(shown.home, f.home);
-  assert.equal(shown.workspace, fs.realpathSync.native(f.workspace));
+  assert.equal(shown.workspace, f.workspace);
   assert.equal(shown.cli, fs.realpathSync.native(f.cli));
   assert.equal(f.controller.setPrivacy(true).profiles[0].email, undefined);
   assert.throws(() => f.controller.setPrivacy('false'), /true or false/);
