@@ -1,7 +1,7 @@
 LinkedIn desktop preview draft
 ===============================
 
-The owner published the [original post](https://www.linkedin.com/feed/update/urn:li:activity:7509033966079840256/). The copy below is an unpublished follow-up. Use it only after the v0.3.0-preview.1 downloads and checksums are published and checked. Do not claim measured onboarding speed or verified real macOS account switching.
+The owner published the [original post](https://www.linkedin.com/feed/update/urn:li:activity:7509033966079840256/). The copy below is an unpublished follow-up. Use it only after the v0.3.0-preview.1 downloads and checksums are published and checked. Do not claim measured onboarding speed or verified real account switching on either platform.
 
 Post draft
 -----------
@@ -16,7 +16,7 @@ You can sign into a new isolated profile through the provider, or link a login y
 
 The preview has a Windows installer and Mac downloads for Apple Silicon and Intel. Node.js is included. You still need the provider CLI installed.
 
-This is an early preview: Windows is unsigned, and the Mac app is not notarized. Real two-account login and renewal on Mac still need validation. Grok and Devin retain limited existing-login support.
+This is an early preview: Windows is unsigned, and the Mac app is not notarized. Real two-account login and renewal still need validation on both platforms. Grok and Devin retain limited existing-login support.
 
 Try it before your next session and tell me where setup gets in your way.
 
@@ -25,7 +25,7 @@ Try it before your next session and tell me where setup gets in your way.
 Comment for the existing post
 -----------------------------
 
-Update: the next preview combines quota checks with isolated Codex and Claude Code account launches, plus Windows and Mac installers. Node.js is included. Windows is unsigned; Mac is not notarized, and real multi-account Mac login/renewal still needs validation. [Release notes and downloads](https://github.com/naimkatiman/weekly-ai-usage/releases).
+Update: the next preview combines quota checks with isolated Codex and Claude Code account launches, plus Windows and Mac installers. Node.js is included. Windows is unsigned; Mac is not notarized, and real multi-account login/renewal still needs validation on both platforms. [Release notes and downloads](https://github.com/naimkatiman/weekly-ai-usage/releases).
 
 Recording plan, about 25 seconds
 --------------------------------
