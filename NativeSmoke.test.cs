@@ -20,6 +20,12 @@ public static class NativeSmokeTests {
         Environment.SetEnvironmentVariable("WEEKLY_USAGE_CONFIG", config);
         foreach (string file in new[] { "collect.cjs", "grok.cjs", "devin.cjs" })
             File.Copy(Path.Combine(args[0], file), Path.Combine(sandbox, file));
+        string bundledNode = Path.Combine(args[0], "runtime", "node.exe");
+        if (File.Exists(bundledNode)) {
+            Directory.CreateDirectory(Path.Combine(sandbox, "runtime"));
+            File.Copy(bundledNode, Path.Combine(sandbox, "runtime", "node.exe"));
+            Environment.SetEnvironmentVariable("PATH", "");
+        }
         File.WriteAllText(Path.Combine(profile, ".claude.json"), "{\"oauthAccount\":{\"emailAddress\":\"demo@example.com\"}}");
         Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
         int result = 1;
@@ -31,6 +37,7 @@ public static class NativeSmokeTests {
     }
     static int RunChecks() {
         try {
+            RuntimeSelection();
             using (var window = Dashboard()) {
                 Check(Field<Panel>(window, "welcome").Visible, "first run shows a welcome screen");
                 Check(!Field<Button>(window, "help").Enabled, "sign-in help waits for an account");
@@ -107,6 +114,19 @@ public static class NativeSmokeTests {
             Console.WriteLine("PASS: " + checks + " native onboarding checks. Screenshots: " + sandbox);
             return 0;
         } catch (Exception e) { Console.Error.WriteLine(e); return 1; }
+    }
+    static void RuntimeSelection() {
+        var method = typeof(WeeklyUsage).GetMethod("FindNode", BindingFlags.NonPublic | BindingFlags.Static);
+        string folder = Path.Combine(sandbox, "runtime-selection"), system = Path.Combine(folder, "system");
+        Directory.CreateDirectory(Path.Combine(folder, "runtime")); Directory.CreateDirectory(Path.Combine(system, "nodejs"));
+        Check((string)method.Invoke(null, new object[] { folder, system }) == "node.exe", "source builds retain PATH fallback");
+        string installed = Path.Combine(system, "nodejs", "node.exe"); File.WriteAllText(installed, "fixture");
+        Check((string)method.Invoke(null, new object[] { folder, system }) == installed, "source builds retain installed Node fallback");
+        string bundled = Path.Combine(folder, "runtime", "node.exe"); File.WriteAllText(bundled, "fixture");
+        Check((string)method.Invoke(null, new object[] { folder, system }) == bundled, "bundled runtime takes priority over system Node");
+        if (File.Exists(Path.Combine(sandbox, "runtime", "node.exe")))
+            Check((string)method.Invoke(null, new object[] { sandbox, system }) == Path.Combine(sandbox, "runtime", "node.exe"),
+                "installed application selects its bundled runtime with an empty PATH");
     }
     static Account Demo(string provider, string label, double used) {
         return new Account { id = provider + ":demo@example.com", provider = provider, email = "demo@example.com", label = label,

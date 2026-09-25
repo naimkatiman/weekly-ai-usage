@@ -138,21 +138,17 @@ public sealed class WeeklyUsage : Form {
         grid.SelectionChanged += delegate { ShowDetail(); };
         table.Controls.Add(grid);
         welcome.Dock = DockStyle.Fill; welcome.BackColor = Color.White;
-        welcome.Controls.Add(new Label { Text = "See your first account in one place", Location = new Point(24, 30),
+        welcome.Controls.Add(new Label { Text = "See which account has quota left", Location = new Point(24, 30),
             AutoSize = true, Font = new Font("Segoe UI", 17, FontStyle.Bold) });
-        welcome.Controls.Add(new Label { Text = "Add an account you already use in a supported CLI.\r\nYour login stays with its provider. This app reads quota only.",
+        welcome.Controls.Add(new Label { Text = "Add an AI account you already use.\r\nCheck its reported usage and reset time before your next session.",
             Location = new Point(26, 85), Size = new Size(730, 56) });
         first.Text = "Add your first account"; first.Location = new Point(26, 152); first.Size = new Size(210, 40);
         first.BackColor = accent; first.ForeColor = Color.White; first.FlatStyle = FlatStyle.Flat;
         first.Click += async delegate { await ManageAccounts(); };
         welcome.Controls.Add(first);
-        var nodeLink = new LinkLabel { Text = "Requires Node.js 20+ and an existing CLI login. Get Node.js", Location = new Point(26, 212),
+        var loginNote = new Label { Text = "An existing provider CLI login is required. Your login stays unchanged.", Location = new Point(26, 212),
             Size = new Size(730, 40) };
-        nodeLink.LinkClicked += delegate {
-            try { Process.Start(new ProcessStartInfo("https://nodejs.org/en/download") { UseShellExecute = true }); }
-            catch (Exception) { MessageBox.Show(this, "Visit https://nodejs.org/en/download to install Node.js 20 or newer.", "Node.js required"); }
-        };
-        welcome.Controls.Add(nodeLink);
+        welcome.Controls.Add(loginNote);
         table.Controls.Add(welcome); welcome.BringToFront(); grid.Visible = false;
         Controls.Add(table); Controls.Add(bottom); Controls.Add(header);
 
@@ -209,9 +205,8 @@ public sealed class WeeklyUsage : Form {
         schedule.Stop(); refreshError = ""; UpdateFooter();
         try {
             string json = await Task.Run(async () => {
-                string node = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "nodejs", "node.exe");
                 var start = new ProcessStartInfo {
-                    FileName = File.Exists(node) ? node : "node.exe",
+                    FileName = FindNode(appDirectory, Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)),
                     Arguments = "\"" + Path.Combine(appDirectory, "collect.cjs") + "\"",
                     WorkingDirectory = appDirectory, UseShellExecute = false, CreateNoWindow = true,
                     RedirectStandardOutput = true, RedirectStandardError = true,
@@ -219,7 +214,7 @@ public sealed class WeeklyUsage : Form {
                 Process started;
                 try { started = Process.Start(start); }
                 catch (System.ComponentModel.Win32Exception) {
-                    throw new SetupError("Node.js was not found. Install Node 20+ from nodejs.org or add node.exe to PATH, then click Refresh now.");
+                    throw new SetupError("The usage runtime could not start. Run the installer again to repair it. Source or portable builds need Node.js 20+ installed.");
                 }
                 using (var process = started) {
                     Task<string> output = process.StandardOutput.ReadToEndAsync();
@@ -246,6 +241,12 @@ public sealed class WeeklyUsage : Form {
                 schedule.Start(); Render();
             }
         }
+    }
+    internal static string FindNode(string directory, string programFiles) {
+        string bundled = Path.Combine(directory, "runtime", "node.exe");
+        if (File.Exists(bundled)) return bundled;
+        string installed = Path.Combine(programFiles, "nodejs", "node.exe");
+        return File.Exists(installed) ? installed : "node.exe";
     }
     void LoadSnapshot(string json) {
         var data = new JavaScriptSerializer().Deserialize<Snapshot>(json);
