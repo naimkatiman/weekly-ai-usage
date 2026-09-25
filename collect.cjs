@@ -4,13 +4,13 @@ const path = require('node:path');
 const os = require('node:os');
 const { fetchNative } = require('./devin.cjs');
 const { fetchCredits } = require('./grok.cjs');
+const { credentials, readCredentials } = require('./credentials.cjs');
 
 const root = os.homedir();
 const providers = ['claude', 'codex', 'grok', 'devin'];
 const defaultPlans = { claude: 'Max', codex: 'Pro', grok: 'SuperGrok', devin: 'Max' };
 
 function read(file) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } }
-function jwt(token) { try { return JSON.parse(Buffer.from(token.split('.')[1], 'base64url')); } catch { return {}; } }
 function sameEmail(a, b) { return typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase(); }
 function checkEmail(actual, expected) { if (!sameEmail(actual, expected)) throw new Error('Account identity mismatch. Check the provider login.'); }
 function expand(dir, userRoot = root) { return dir.replace(/^~(?=$|[\\/])/, userRoot); }
@@ -105,48 +105,14 @@ async function request(url, headers, body) {
   try { return JSON.parse(text); } catch { throw new Error('Provider returned an unreadable response.'); }
 }
 
-// Claude: `home` is the account's CLAUDE_CONFIG_DIR. Codex: `home` is its CODEX_HOME.
-// The default profile is also checked, but only used when its identity matches the account.
-function credentials(account, userRoot = root) {
-  const sources = [];
-  if (account.provider === 'claude') {
-    if (account.home) {
-      const home = expand(account.home, userRoot);
-      sources.push([path.join(home, '.credentials.json'), read(path.join(home, '.claude.json'))?.oauthAccount?.emailAddress]);
-    }
-    sources.push([path.join(userRoot, '.claude', '.credentials.json'),
-      read(path.join(userRoot, '.claude.json'))?.oauthAccount?.emailAddress]);
-  } else {
-    if (account.home) sources.push([path.join(expand(account.home, userRoot), 'auth.json')]);
-    sources.push([path.join(userRoot, '.codex', 'auth.json')]);
-  }
-  const candidates = [];
-  for (const [file, email] of sources) {
-    const auth = read(file);
-    if (account.provider === 'codex' && auth?.tokens) {
-      const identity = jwt(auth.tokens.id_token);
-      if (sameEmail(identity.email, account.email)) candidates.push({ token: auth.tokens.access_token,
-        expires: (jwt(auth.tokens.access_token).exp || 0) * 1000, accountId: auth.tokens.account_id });
-    } else if (auth?.claudeAiOauth && sameEmail(email, account.email)) {
-      candidates.push({ token: auth.claudeAiOauth.accessToken, expires: auth.claudeAiOauth.expiresAt,
-        plan: auth.claudeAiOauth.rateLimitTier?.includes('20x') ? 'Max 20x' :
-          auth.claudeAiOauth.rateLimitTier?.includes('5x') ? 'Max 5x' : auth.claudeAiOauth.subscriptionType });
-    }
-  }
-  const selected = candidates.filter(c => typeof c.token === 'string').sort((a, b) => b.expires - a.expires)[0];
-  if (!selected) throw new Error('No matching ' + account.provider + ' login found for ' + account.email + '. Check its home folder and sign in.');
-  if (selected.expires <= Date.now()) throw new Error('Login expired. Open ' + account.provider + ' as ' + account.email + ' and run /usage or /login.');
-  return selected;
-}
-
-async function collectAccount(account) {
+async function collectAccount(account, options = {}) {
   if (account.provider === 'codex') {
-    const c = credentials(account);
+    const c = await readCredentials(account, options);
     return parseCodex(await request('https://chatgpt.com/backend-api/wham/usage', {
       Authorization: 'Bearer ' + c.token, 'ChatGPT-Account-Id': c.accountId }), account.email);
   }
   if (account.provider === 'claude') {
-    const c = credentials(account);
+    const c = await readCredentials(account, options);
     const headers = { Authorization: 'Bearer ' + c.token, 'anthropic-beta': 'oauth-2025-04-20' };
     const identity = await request('https://api.anthropic.com/api/oauth/profile', headers);
     checkEmail(identity.account?.email, account.email);
@@ -193,10 +159,10 @@ function withStatus(account, result, error, prior, now) {
   return row;
 }
 
-async function collect(accounts, previous = null) {
+async function collect(accounts, previous = null, options = {}) {
   const results = await Promise.all(accounts.map(async account => {
     let result, error;
-    try { result = await collectAccount(account); } catch (e) { error = e.message; }
+    try { result = await collectAccount(account, options); } catch (e) { error = e.message; }
     return withStatus(account, result, error, previous?.accounts?.find(a => a.id === account.id), Date.now());
   }));
   return { generatedAt: new Date().toISOString(), refreshMinutes: 15, accounts: results };
@@ -216,4 +182,4 @@ if (require.main === module) {
   }).catch(() => { process.stderr.write('Usage refresh failed. Check local file permissions.\n'); process.exitCode = 1; });
 }
 
-module.exports = { loadConfig, loadAccounts, quota, checkEmail, parseCodex, parseClaude, parseGrok, parseDevin, withStatus, credentials };
+module.exports = { loadConfig, loadAccounts, quota, checkEmail, parseCodex, parseClaude, parseGrok, parseDevin, withStatus, credentials, collect };
