@@ -80,9 +80,20 @@ Verification: existing collector/config/native tests; app runtime-selection test
 Progress:
 
 - [x] Bundled-runtime support and problem-solving UI copy.
-- [ ] Installer definition, pinned runtime packaging and CI.
-- [ ] Installer-first documentation and updated launch assets.
-- [ ] Independent review and installation/upgrade/uninstall verification.
-- [ ] Merge, installer preview release and public download verification.
+- [x] Installer definition, pinned runtime packaging and CI.
+- [x] Installer-first documentation and updated first-run screenshot.
+- [x] Independent review and installation/reinstall/uninstall verification.
+- [x] Merge, installer preview release and public download verification.
 
 Local source verification passed: 24 collector tests, 80 configuration assertions and 28 native checks, with warnings-as-errors compilation. Installer scripts pass syntax checks and independent review. Hosted build and installed-binary lifecycle verification remain required before publishing.
+
+## Installer release receipt
+
+- [PR #3](https://github.com/naimkatiman/weekly-ai-usage/pull/3) merged at `6febb63f05ac6ab3d95ca85112a840a89c88bb25`.
+- The exact-source [release build](https://github.com/naimkatiman/weekly-ai-usage/actions/runs/36076773416) passed, including 29 native checks using the installed bundled runtime with an empty PATH and 18 installer lifecycle checks. The final installer passed the same checks on the owner's Windows host in an isolated directory.
+- Setup reruns preserved configuration/cache bytes. Uninstall removed program files, runtime, shortcut and registration. Only the two synthetic user-data files remained. Neither user nor machine PATH changed.
+- A dated QA correction: the initial test cleanup reran the uninstaller during self-removal after all lifecycle checks had passed. Cleanup now tracks ownership and waits for removal; the corrected suite passes locally and in CI.
+- [v0.2.0-preview.1](https://github.com/naimkatiman/weekly-ai-usage/releases/tag/v0.2.0-preview.1) provides the 24,952,080-byte Setup executable and its SHA256 file. The unauthenticated public download matched `414389e43c926cd0f9f9027dc96017c863c33178c93cf13f44edecad1cd59219`.
+- Installer signing status is NotSigned, disclosed in README and release notes. No signing certificate or other paid service was purchased.
+- The README, first-run UI and repository description lead with quota availability. The original LinkedIn post was published by the owner; the new installer follow-up remains a draft. The old portable-release video is labelled historical rather than reused with its outdated separate-Node requirement.
+- Real-user timing and new live provider sign-ins remain unverified.
