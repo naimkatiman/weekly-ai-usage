@@ -1,54 +1,63 @@
-LinkedIn preview launch
-======================
+LinkedIn installer follow-up
+===========================
 
-This is a prepared draft, not a published post. Use it only after the portable preview release is available and its download link has been checked. The three-person onboarding test below remains unverified. No live provider compatibility or setup timing is claimed by this document.
+The owner has published the [original LinkedIn post](https://www.linkedin.com/feed/update/urn:li:activity:7509033966079840256/). The installer follow-up and comment below are prepared drafts. Neither has been posted by this work. Use them after the v0.2.0-preview.1 installer is published and its public download has been checked. The three-person onboarding test below remains unverified; no setup timing or new live provider compatibility is claimed here.
 
-Post draft
-----------
+Follow-up draft
+---------------
 
 Which AI account still has quota before I start another coding session?
 
-I built Weekly AI Usage to answer that in one Windows tray dashboard.
+Weekly AI Usage puts that answer in one Windows tray dashboard. See reported weekly usage, remaining quota and reset times across your Claude, Codex, Grok and Devin accounts, with separate rows for work and personal accounts.
 
-It reads quota for Claude, Codex, Grok and Devin, with separate rows for work and personal accounts. You can see the reported weekly usage, remaining quota and reset time. Select an account to inspect its shorter usage window when the provider offers one.
+The Windows preview now has an installer. No ZIP extraction or separate Node.js installation required.
 
-The preview now has a portable download and a guided account setup. Choose a provider, find an existing local login, and save the account. Devin requires manual email entry.
+Install the app, choose Add your first account, and select an existing provider login. Save it to check its quota. Devin requires manual email entry.
 
-You still need Windows, Node.js 20 or newer, and a provider CLI you have already signed into. The dashboard reads those logins, checks usage every 15 minutes, and labels missing or stale readings clearly. It does not send prompts or spend credits.
+You need Windows 10 or 11 on x64 and a supported provider CLI you have already signed into. The dashboard reads that existing login and labels missing or stale readings clearly.
 
-I am looking for Windows users with multiple AI accounts to try the setup and tell me where they get stuck.
+Try it before your next coding session. Tell me which step needs less effort.
 
-Download the preview: https://github.com/naimkatiman/weekly-ai-usage/releases
+Download for Windows: https://github.com/naimkatiman/weekly-ai-usage/releases/download/v0.2.0-preview.1/WeeklyAIUsage-0.2.0-preview.1-Setup-x64.exe
 
-Prepared preview asset
-----------------------
+Comment for the existing post
+-----------------------------
 
-`linkedin-preview.mp4` is a 25-second captioned walkthrough made from native UI screenshots. It shows welcome, account setup, missing-login feedback and a synthetic quota dashboard. It is an illustrated preview, not a recording of a real provider sign-in. The release includes this optional video for the post. The storyboard below is available for a later interactive recording.
+Update: there is now a Windows installer. Node.js is included, so you do not need to install it separately. Install, add your existing AI account, and check its remaining weekly quota and reset time. Windows 10/11 x64 and an existing supported provider CLI login are required.
+
+Download: https://github.com/naimkatiman/weekly-ai-usage/releases/download/v0.2.0-preview.1/WeeklyAIUsage-0.2.0-preview.1-Setup-x64.exe
+
+Preview assets
+--------------
+
+The `linkedin-preview.mp4` in v0.1.0-preview.1 is a historical 25-second captioned walkthrough made from native UI screenshots. It shows welcome, account setup, missing-login feedback and a synthetic quota dashboard. Its separate Node.js requirement describes the earlier portable release and is outdated for the installer. Do not reuse that video to explain the new installation flow.
+
+It is an illustrated preview, not a recording of a real provider sign-in. Use the storyboard below for a new installer walkthrough; do not claim it exists until recorded and reviewed.
 
 Demo recording, 25 seconds
 -------------------------
 
-Use a clean demo configuration with addresses such as `personal@example.com` and `work@example.com`. Record only synthetic readings and label the recording "Demo data" on screen throughout. Never expose real account emails, provider credential files or tokens. Synthetic readings demonstrate the interface; they do not verify live provider compatibility.
+Use a clean demo configuration with addresses such as `personal@example.com` and `work@example.com`. Label synthetic readings "Demo data" on screen throughout. Never expose real account emails, provider credential files or tokens. Synthetic readings demonstrate the interface; they do not verify live provider compatibility.
 
 | Time | Picture | On-screen text |
 | --- | --- | --- |
 | 0-3 s | Open the dashboard from the tray. Show two demo account rows with different remaining quotas. | Which account has quota left? |
-| 3-7 s | Open Manage accounts and the account editor. Show the provider choice and demo email. | Add the account you already use |
-| 7-12 s | Show a separate, clearly labelled demo of the first-run setup with Find existing login and Save account. | Existing CLI login required |
+| 3-7 s | Show the installer, then the Start Menu shortcut. Use an explicit cut between them. | Install on Windows. Node.js included. |
+| 7-12 s | Show first-run setup with Find existing login and Save account. | Add an account you already use |
 | 12-18 s | Return to the two-row dashboard. Select one row to show its shorter usage window and reset time. | Weekly quota and reset time |
 | 18-22 s | Show a Stale demo row with its capture time, then an Unavailable row. | Missing data stays visible |
-| 22-25 s | Minimize to the tray. End with the repository name and release link. | Windows preview. Node.js 20+ required. |
+| 22-25 s | Minimize to the tray. End with the repository name and release link. | Windows preview. Existing CLI login required. |
 
 Keep account names and statuses large enough to read on a phone. Use short cuts instead of speeding through an actual setup. Do not add a stopwatch or imply that a 25-second video proves setup duration. Add captions so the demo works without audio.
 
 Gate for the broader launch
 --------------------------
 
-Status: unverified. Recruit three first-time Windows users who already have Node.js 20+ and one supported CLI login. Give them only the release link and README. Record prerequisite installation time separately if a participant starts without them.
+Status: unverified. Recruit three first-time Windows 10/11 x64 users who have one supported CLI login. At least one should have no separate Node.js installation. Give them only the release link and README. Record provider CLI installation and sign-in time separately if a participant starts without them.
 
 For each participant, record whether they independently:
 
-- Download and extract the ZIP, launch the app, add the intended account, and reach a verified Live reading within five minutes.
+- Download and run the installer, open the app, add the intended account, and reach a verified Live reading within five minutes.
 - Recover from a missing login using the app's help and documentation.
 - Explain the difference between Live, Stale, Reset pending and Unavailable.
 - Minimize the app to keep it running and exit it intentionally.

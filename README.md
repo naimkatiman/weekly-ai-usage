@@ -1,7 +1,11 @@
-﻿Weekly AI Usage
-===============
+﻿See which AI account has quota left
+==================================
 
-A Windows tray dashboard for checking Claude, Codex, Grok and Devin quota in one place. Keep separate rows for work and personal accounts, see remaining weekly quota and reset times, and select an account to inspect its shorter usage window.
+Check before your next coding session. Weekly AI Usage puts the reported weekly usage, remaining quota and reset times for your Claude, Codex, Grok and Devin accounts in one Windows tray dashboard. Keep separate rows for work and personal accounts.
+
+[Download for Windows](https://github.com/naimkatiman/weekly-ai-usage/releases/download/v0.2.0-preview.1/WeeklyAIUsage-0.2.0-preview.1-Setup-x64.exe)
+
+Windows 10 or 11, x64. Preview v0.2.0-preview.1. The installer includes Node.js; no separate Node.js installation is required. You need a supported provider CLI that you have already signed into. [Release notes and checksums](https://github.com/naimkatiman/weekly-ai-usage/releases).
 
 ![Dashboard with three accounts and account management controls](docs/screenshot.png)
 
@@ -10,15 +14,13 @@ Synthetic demo data. These readings illustrate the UI and are not live account r
 Get your first account working
 ------------------------------
 
-You need Windows 10 or 11, [Node.js 20 or newer](https://nodejs.org), and a supported provider CLI that you have already signed into. This app reads that existing login. It does not sign you in.
+1. Download and run the installer above. Open Weekly AI Usage from the Start Menu after installation.
+2. Choose Add your first account, select its provider, then Find existing login. Confirm the email and choose Save account. For a custom profile, enter its folder first. Devin requires manual email entry.
+3. Check the account row. Live with a weekly reading means the provider returned its quota. You can see the remaining allowance and reset time, then select the account to inspect its shorter usage window when available.
 
-1. Download the portable ZIP from [Releases](https://github.com/naimkatiman/weekly-ai-usage/releases). This is a preview release.
-2. Extract the entire ZIP to a folder you can write to, such as a folder under Documents. Keep the files together.
-3. Open `WeeklyUsage.exe`, then choose Add your first account.
-4. Choose your provider. Select Find existing login to fill in the email from its local profile, or enter the email yourself. For a custom profile, enter its folder first. Devin requires manual email entry.
-5. Choose Save account. The dashboard checks the account immediately. Confirm that its row shows Live and a weekly reading. A detected email alone does not prove that the provider accepts the login.
+A detected email alone does not prove that the provider accepts the login. If the row is Unavailable, select it and open Sign-in help. Follow the instructions for that account, then choose Refresh now. See [troubleshooting](docs/troubleshooting.md) for login, installation and other setup failures.
 
-If the row is Unavailable, select it and open Sign-in help. Follow the instructions for that account, then choose Refresh now. See [troubleshooting](docs/troubleshooting.md) for missing Node.js, custom folders and other setup failures.
+The installer works for your Windows user without administrator rights. It adds a Start Menu shortcut and installs under `%LOCALAPPDATA%\Programs\Weekly AI Usage` by default. It does not change PATH or enable automatic startup. The app reads your existing provider login; it does not sign you in.
 
 Use Manage accounts to edit an account, or choose New account there to add another. A label such as Work or Personal is optional. Start with one account so you can confirm its reading before adding the rest.
 
@@ -64,7 +66,7 @@ For Devin, set the optional Devin CLI path if `devin.exe` is not on PATH. Only t
 Manual configuration
 --------------------
 
-The account editor creates `accounts.json` beside the app by default. Set `WEEKLY_USAGE_CONFIG` before launching the app to use a different file; the editor and collector both use it. Existing account settings and additional JSON fields are preserved when the editor saves. If another process changes the file, reopen Manage accounts before saving again.
+The account editor creates `accounts.json` beside the app by default, normally in `%LOCALAPPDATA%\Programs\Weekly AI Usage` for an installed copy. Set `WEEKLY_USAGE_CONFIG` before launching the app to use a different file; the editor and collector both use it. Existing account settings and additional JSON fields are preserved when the editor saves. If another process changes the file, reopen Manage accounts before saving again.
 
 For manual setup, copy `accounts.example.json` to `accounts.json`, replace the example email with your own, and choose Refresh now. The example contains one account:
 
@@ -90,11 +92,18 @@ Save JSON as UTF-8. Use forward slashes in Windows paths, such as `C:/tools/devi
 Updates and removal
 -------------------
 
-Before updating, exit the app and back up `accounts.json`. If you set `WEEKLY_USAGE_CONFIG`, back up that file instead and keep the same setting when launching the new version. Release ZIPs do not contain a real `accounts.json` or `usage-cache.json`.
+To update an installed copy, exit the app and run the new installer. It keeps your account settings and usage cache. Back up `accounts.json` before updating. If you set `WEEKLY_USAGE_CONFIG`, back up that file instead and keep the same setting when launching the new version. Release packages do not contain a real `accounts.json` or `usage-cache.json`.
 
-Extract a new release to a new folder. Copy your old `accounts.json` into it, or continue using your external configuration file, then launch the new executable. The usage cache is optional and can be rebuilt by refreshing. Keep the old folder until the new version reads your account correctly.
+Moving from the old ZIP? Exit the old app first. Install the new version and clear Open Weekly AI Usage on the Finish screen. With both copies closed, copy only your old `accounts.json` into the installation folder, then open the installed app. If you already use `WEEKLY_USAGE_CONFIG`, keep it pointed at your existing configuration instead. There is no need to copy provider credential files or change their logins. The usage cache is optional and can be rebuilt by refreshing. Keep the old folder until the installed version reads your account correctly.
 
-To remove the app, exit it and delete its extracted folder. This removes its local configuration and cache if they are in that folder. Remove any external configuration file separately if you no longer need it. Provider CLI logins remain in their own folders and are unchanged.
+To uninstall, exit the app and remove Weekly AI Usage through Windows Settings > Apps. Uninstall removes the app files and shortcuts but preserves user-created `accounts.json` and `usage-cache.json`. To remove those too, deliberately delete them from the installation folder after uninstalling. Remove an external configuration file only if you no longer need it. Provider CLI logins remain in their own folders and are unchanged.
+
+Portable ZIP and source users
+----------------------------
+
+The installer is the simplest setup. Earlier portable ZIPs remain available under [Releases](https://github.com/naimkatiman/weekly-ai-usage/releases) for manual use. They require [Node.js 20 or newer](https://nodejs.org) on PATH. Extract the entire ZIP to a writable folder, keep its files together, and open `WeeklyUsage.exe`.
+
+To update a portable copy manually, exit it, extract the new package to a new folder and copy `accounts.json`, or retain your external `WEEKLY_USAGE_CONFIG` setting. To remove a portable copy, exit it and delete its extracted folder; this also deletes any settings and cache inside that folder.
 
 Caveats
 -------
@@ -108,7 +117,7 @@ Endpoint references: [CodexBar provider notes](https://github.com/steipete/Codex
 Build from source
 -----------------
 
-In PowerShell, with Git and Node.js installed:
+In PowerShell, with Git and Node.js 20 or newer installed:
 
 ```powershell
 git clone https://github.com/naimkatiman/weekly-ai-usage.git
@@ -122,15 +131,17 @@ The build uses the .NET Framework C# compiler included with Windows. No addition
 Development
 -----------
 
-Run all tests, compile, then create a portable preview package:
+Run all tests, compile, then create the installer using an existing Inno Setup compiler:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\test.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\package.ps1 -Version 0.1.0-preview.1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\installer.ps1 -Version 0.2.0-preview.1
 ```
 
-The package and SHA-256 checksum are written to `dist/WeeklyAIUsage-0.1.0-preview.1-windows.zip` and its `.sha256` file. `collect.cjs` builds the snapshot; `grok.cjs` and `devin.cjs` decode provider responses. The C# sources implement the window and account editor.
+The installer and SHA-256 checksum are written to `dist/WeeklyAIUsage-0.2.0-preview.1-Setup-x64.exe` and its `.sha256` file. The build downloads a pinned official Node.js 24 runtime, verifies its checksum and includes its license. The Windows CI runner has Inno Setup installed; for a custom compiler location, pass `-CompilerPath` or set `ISCC_PATH`. `package.ps1 -Version 0.2.0-preview.1` creates a portable ZIP for manual use instead.
+
+`collect.cjs` builds the snapshot; `grok.cjs` and `devin.cjs` decode provider responses. The C# sources implement the window and account editor.
 
 Headless: after configuring an account, `node collect.cjs` prints the snapshot as JSON on Windows or Linux. On macOS, Claude Code uses the Keychain instead of `.credentials.json`, so Claude rows report no matching login.
 
