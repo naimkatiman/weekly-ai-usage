@@ -2,105 +2,149 @@ param([Parameter(Mandatory = $true)][string]$InstallerPath)
 
 $ErrorActionPreference = 'Stop'
 $taskInstaller = (Resolve-Path -LiteralPath $InstallerPath).Path
-$taskUninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{BCD80182-BC56-4F3D-9608-14E0F73C8493}_is1'
+if (-not (Test-Path -LiteralPath $taskInstaller -PathType Leaf) -or [IO.Path]::GetExtension($taskInstaller) -ne '.exe') {
+    throw 'Installer QA requires the candidate Setup executable.'
+}
+$taskDevelopmentNode = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source
+$taskAppKey = '{BCD80182-BC56-4F3D-9608-14E0F73C8493}_is1'
+$taskUninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\' + $taskAppKey
+$taskExistingKeys = @($taskUninstallKey,
+    ('HKCU:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\' + $taskAppKey),
+    ('HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\' + $taskAppKey),
+    ('HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\' + $taskAppKey))
 $taskShortcutFolder = Join-Path ([Environment]::GetFolderPath('Programs')) 'Weekly AI Usage'
 $taskShortcut = Join-Path $taskShortcutFolder 'Weekly AI Usage.lnk'
-if ((Test-Path -LiteralPath $taskUninstallKey) -or (Test-Path -LiteralPath $taskShortcutFolder)) {
+if (($taskExistingKeys | Where-Object { Test-Path -LiteralPath $_ }) -or (Test-Path -LiteralPath $taskShortcutFolder)) {
     throw 'An existing Weekly AI Usage installation or shortcut is present. Installer QA will not replace it.'
 }
 $taskRoot = Join-Path ([IO.Path]::GetTempPath()) ('WeeklyUsage-installer-tests-' + [guid]::NewGuid().ToString('N'))
-$taskInstallDirectory = Join-Path $taskRoot 'app'
 New-Item -ItemType Directory -Path $taskRoot | Out-Null
 $taskRoot = (Resolve-Path -LiteralPath $taskRoot).Path
-if ((Get-Item -LiteralPath $taskRoot).Attributes -band [IO.FileAttributes]::ReparsePoint) {
-    throw 'Installer test root must not be a reparse point.'
-}
-if (-not [IO.Path]::GetFullPath($taskInstallDirectory).StartsWith($taskRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'Installer test target escaped its isolated root.'
-}
+$taskInstallDirectory = Join-Path $taskRoot 'app'
+$taskExecutable = Join-Path $taskInstallDirectory 'WeeklyUsage.exe'
+$taskUninstaller = Join-Path $taskInstallDirectory 'unins000.exe'
 $taskUserPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
 $taskMachinePath = [Environment]::GetEnvironmentVariable('PATH', 'Machine')
-$taskUninstaller = Join-Path $taskInstallDirectory 'unins000.exe'
 $taskInstalled = $false
+$taskUninstallAttempted = $false
 $taskChecks = 0
 
 function Assert-Installer([bool]$Condition, [string]$Message) {
     if (-not $Condition) { throw "Installer QA failed: $Message" }
     $script:taskChecks++
 }
-function Invoke-TestProgram([string]$File, [string[]]$Arguments) {
-    $taskProcess = Start-Process -FilePath $File -ArgumentList $Arguments -PassThru -WindowStyle Hidden
-    if (-not $taskProcess.WaitForExit(60000)) {
-        $taskProcess.Kill()
-        throw "Installer QA process timed out: $File"
+function Assert-OwnedTarget {
+    if ((Get-Item -LiteralPath $taskRoot).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw 'Installer test root must not be a reparse point.'
     }
-    $taskProcess.Refresh()
-    if ($taskProcess.ExitCode -ne 0) { throw "Installer QA process exited $($taskProcess.ExitCode): $File" }
+    if (-not [IO.Path]::GetFullPath($taskInstallDirectory).StartsWith($taskRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Installer test target escaped its isolated root.'
+    }
+    if ((Test-Path -LiteralPath $taskInstallDirectory) -and
+        ((Get-Item -LiteralPath $taskInstallDirectory).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw 'Installer test target must not be a reparse point.'
+    }
 }
-function Remove-TestInstallation {
+function Invoke-TestProgram([string]$Label, [string]$File, [string[]]$Arguments, [int]$Timeout = 120000) {
+    $taskOut = Join-Path $taskRoot ($Label + '.stdout.log')
+    $taskErr = Join-Path $taskRoot ($Label + '.stderr.log')
+    $taskProcess = Start-Process -FilePath $File -ArgumentList $Arguments -WorkingDirectory $PSScriptRoot `
+        -RedirectStandardOutput $taskOut -RedirectStandardError $taskErr -PassThru -WindowStyle Hidden
+    try {
+        if (-not $taskProcess.WaitForExit($Timeout)) {
+            try { $taskProcess.Kill($true) } catch { if (-not $taskProcess.HasExited) { $taskProcess.Kill() } }
+            throw "Installer QA stage timed out: $Label"
+        }
+        $taskProcess.Refresh()
+        if ($taskProcess.ExitCode -ne 0) { throw "Installer QA stage failed: $Label (exit $($taskProcess.ExitCode))." }
+    } finally { $taskProcess.Dispose() }
+}
+function Assert-OwnedRegistration {
     if (Test-Path -LiteralPath $taskUninstallKey) {
         $taskRegistered = Get-ItemProperty -LiteralPath $taskUninstallKey
         if ($taskRegistered.InstallLocation.TrimEnd('\') -ne $taskInstallDirectory.TrimEnd('\')) {
-            throw 'Refusing to uninstall: the registry entry points outside the isolated test directory.'
+            throw 'Refusing to uninstall: registration points outside the isolated test directory.'
         }
     }
-    if (Test-Path -LiteralPath $taskUninstaller) {
-        Invoke-TestProgram $taskUninstaller @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', ('/LOG="' + (Join-Path $taskRoot 'uninstall.log') + '"'))
-        $taskDeadline = [DateTime]::UtcNow.AddSeconds(15)
-        while (((Test-Path -LiteralPath $taskUninstallKey) -or (Test-Path -LiteralPath $taskUninstaller)) -and [DateTime]::UtcNow -lt $taskDeadline) { Start-Sleep -Milliseconds 100 }
+}
+function Check-Shortcut {
+    Assert-Installer (Test-Path -LiteralPath $taskShortcut) 'Start Menu shortcut exists'
+    $taskShell = New-Object -ComObject WScript.Shell
+    $taskLink = $null
+    try {
+        $taskLink = $taskShell.CreateShortcut($taskShortcut)
+        Assert-Installer ($taskLink.TargetPath -eq $taskExecutable) 'shortcut opens the installed executable'
+        Assert-Installer ($taskLink.WorkingDirectory -eq $taskInstallDirectory) 'shortcut uses its installation directory'
+    } finally {
+        if ($taskLink) { [Runtime.InteropServices.Marshal]::FinalReleaseComObject($taskLink) | Out-Null }
+        [Runtime.InteropServices.Marshal]::FinalReleaseComObject($taskShell) | Out-Null
     }
+}
+function Remove-TestInstallation {
+    if ($script:taskUninstallAttempted) { return }
+    $script:taskUninstallAttempted = $true
+    Assert-OwnedTarget
+    Assert-OwnedRegistration
+    if (Test-Path -LiteralPath $taskShortcut) { Check-Shortcut }
+    if (Test-Path -LiteralPath $taskUninstaller) {
+        Invoke-TestProgram 'uninstall' $taskUninstaller @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', ('/LOG="' + (Join-Path $taskRoot 'uninstall.log') + '"'))
+        $taskDeadline = [DateTime]::UtcNow.AddSeconds(20)
+        while (((Test-Path -LiteralPath $taskUninstallKey) -or (Test-Path -LiteralPath $taskUninstaller)) -and [DateTime]::UtcNow -lt $taskDeadline) {
+            Start-Sleep -Milliseconds 100
+        }
+        Assert-Installer (-not (Test-Path -LiteralPath $taskUninstaller)) 'uninstaller finishes self-removal'
+    }
+    $script:taskInstalled = $false
 }
 
 try {
+    Assert-OwnedTarget
     $taskArguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', ('/DIR="' + $taskInstallDirectory + '"'))
     $taskInstalled = $true
-    Invoke-TestProgram $taskInstaller ($taskArguments + ('/LOG="' + (Join-Path $taskRoot 'install.log') + '"'))
-    $taskRegistered = Get-ItemProperty -LiteralPath $taskUninstallKey
-    Assert-Installer ($taskRegistered.InstallLocation.TrimEnd('\') -eq $taskInstallDirectory.TrimEnd('\')) 'per-user uninstall entry points to test installation'
-    Assert-Installer (Test-Path -LiteralPath $taskShortcut) 'Start Menu shortcut exists'
-    $taskShell = New-Object -ComObject WScript.Shell
-    $taskLink = $taskShell.CreateShortcut($taskShortcut)
-    Assert-Installer ($taskLink.TargetPath -eq (Join-Path $taskInstallDirectory 'WeeklyUsage.exe')) 'shortcut opens the installed executable'
-    Assert-Installer ($taskLink.WorkingDirectory -eq $taskInstallDirectory) 'shortcut starts in its installation directory'
-    [Runtime.InteropServices.Marshal]::FinalReleaseComObject($taskLink) | Out-Null
-    [Runtime.InteropServices.Marshal]::FinalReleaseComObject($taskShell) | Out-Null
-    Assert-Installer (-not (Test-Path -LiteralPath (Join-Path $taskInstallDirectory 'accounts.json'))) 'installer ships no account roster'
-    Assert-Installer (-not (Test-Path -LiteralPath (Join-Path $taskInstallDirectory 'usage-cache.json'))) 'installer ships no private cache'
-    $taskNode = Join-Path $taskInstallDirectory 'runtime\node.exe'
-    $taskNodeVersion = & $taskNode --version
-    Assert-Installer ($LASTEXITCODE -eq 0 -and $taskNodeVersion -eq 'v24.21.0') 'bundled runtime starts at the pinned version'
-    Assert-Installer (Test-Path -LiteralPath (Join-Path $taskInstallDirectory 'runtime\LICENSE')) 'Node license is included'
-
-    # Compile the smoke driver against the actual installed application assembly.
-    $taskCompiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-    $taskSmoke = Join-Path $taskInstallDirectory 'InstallerNativeSmoke.exe'
-    & $taskCompiler /nologo /warnaserror+ /target:exe /main:NativeSmokeTests /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Web.Extensions.dll "/r:$taskInstallDirectory\WeeklyUsage.exe" "/out:$taskSmoke" "$PSScriptRoot\NativeSmoke.test.cs"
-    if ($LASTEXITCODE -ne 0) { throw 'Installed application smoke driver did not compile.' }
-    & $taskSmoke $taskInstallDirectory
-    if ($LASTEXITCODE -ne 0) { throw 'Installed native onboarding checks failed.' }
-    Remove-Item -LiteralPath $taskSmoke
+    Invoke-TestProgram 'install' $taskInstaller ($taskArguments + ('/LOG="' + (Join-Path $taskRoot 'install.log') + '"'))
+    Assert-Installer (Test-Path -LiteralPath $taskUninstallKey) 'per-user uninstall entry exists'
+    Assert-OwnedRegistration
+    Check-Shortcut
+    foreach ($taskRelative in @('WeeklyUsage.exe', 'resources\app.asar', 'resources\runtime\node.exe', 'resources\runtime\LICENSE',
+        'resources\launcher\core\profiles.cjs', 'resources\launcher\core\launch.cjs', 'resources\launcher\core\terminal-runner.cjs')) {
+        Assert-Installer (Test-Path -LiteralPath (Join-Path $taskInstallDirectory $taskRelative) -PathType Leaf) "installed package contains $taskRelative"
+    }
+    foreach ($taskPrivateFile in @('accounts.json', 'usage-cache.json', 'profile-store.json', 'quota-cache.json', 'auth.json', '.credentials.json')) {
+        Assert-Installer (-not (Test-Path -LiteralPath (Join-Path $taskInstallDirectory $taskPrivateFile))) 'installer ships no private account state'
+    }
+    # Scan the installed ASAR and resources before adding any synthetic old data.
+    Invoke-TestProgram 'installed-privacy' $taskDevelopmentNode @(('"' + (Join-Path $PSScriptRoot 'scripts\privacy-check.cjs') + '"'), '--artifact', ('"' + $taskInstallDirectory + '"'))
+    $taskNode = Join-Path $taskInstallDirectory 'resources\runtime\node.exe'
+    Invoke-TestProgram 'runtime-version' $taskNode @('--version')
+    Assert-Installer ((Get-Content -LiteralPath (Join-Path $taskRoot 'runtime-version.stdout.log') -Raw).Trim() -eq 'v24.21.0') 'bundled runtime starts at the pinned version'
+    # E2E passes --smoke-root to the installed app and tests its actual bundled
+    # Node/launcher with synthetic homes. No real userData or provider login opens.
+    Invoke-TestProgram 'installed-desktop' $taskDevelopmentNode @(('"' + (Join-Path $PSScriptRoot 'desktop\e2e.cjs') + '"'), '--packaged', ('"' + $taskExecutable + '"')) 180000
+    Assert-Installer ((Get-Content -LiteralPath (Join-Path $taskRoot 'installed-desktop.stdout.log') -Raw) -match 'PASS: \d+ Electron desktop checks') 'installed desktop and bundled terminal helper pass E2E'
     $taskConfig = Join-Path $taskInstallDirectory 'accounts.json'
     $taskCache = Join-Path $taskInstallDirectory 'usage-cache.json'
     Set-Content -LiteralPath $taskConfig -Encoding UTF8 -Value '{"accounts":[{"provider":"claude","email":"installer-test@example.com"}],"preserve":"upgrade-and-uninstall"}'
     Set-Content -LiteralPath $taskCache -Encoding UTF8 -Value '{"synthetic":"preserve-user-cache"}'
     $taskConfigHash = (Get-FileHash -LiteralPath $taskConfig).Hash
     $taskCacheHash = (Get-FileHash -LiteralPath $taskCache).Hash
-    Invoke-TestProgram $taskInstaller ($taskArguments + ('/LOG="' + (Join-Path $taskRoot 'upgrade.log') + '"'))
-    Assert-Installer ((Get-FileHash -LiteralPath $taskConfig).Hash -eq $taskConfigHash) 'upgrade preserves account configuration bytes'
-    Assert-Installer ((Get-FileHash -LiteralPath $taskCache).Hash -eq $taskCacheHash) 'upgrade preserves cached user data'
+    Assert-OwnedTarget
+    Assert-OwnedRegistration
+    Invoke-TestProgram 'upgrade' $taskInstaller ($taskArguments + ('/LOG="' + (Join-Path $taskRoot 'upgrade.log') + '"'))
+    Assert-OwnedRegistration
+    Check-Shortcut
+    Assert-Installer ((Get-FileHash -LiteralPath $taskConfig).Hash -eq $taskConfigHash) 'upgrade preserves legacy configuration bytes'
+    Assert-Installer ((Get-FileHash -LiteralPath $taskCache).Hash -eq $taskCacheHash) 'upgrade preserves legacy cache bytes'
     Remove-TestInstallation
-    $taskInstalled = $false
-    Assert-Installer (-not (Test-Path -LiteralPath (Join-Path $taskInstallDirectory 'WeeklyUsage.exe'))) 'uninstall removes executable'
-    Assert-Installer (-not (Test-Path -LiteralPath $taskNode)) 'uninstall removes bundled runtime'
-    Assert-Installer (-not (Test-Path -LiteralPath $taskUninstallKey)) 'uninstall removes its registry entry'
-    Assert-Installer (-not (Test-Path -LiteralPath $taskShortcut)) 'uninstall removes its shortcut'
-    Assert-Installer ((Get-FileHash -LiteralPath $taskConfig).Hash -eq $taskConfigHash) 'uninstall preserves account settings'
-    Assert-Installer ((Get-FileHash -LiteralPath $taskCache).Hash -eq $taskCacheHash) 'uninstall preserves user cache'
+    foreach ($taskRemoved in @($taskExecutable, $taskNode, (Join-Path $taskInstallDirectory 'resources\app.asar'),
+        (Join-Path $taskInstallDirectory 'resources\launcher\core\terminal-runner.cjs'), $taskUninstallKey, $taskShortcut)) {
+        Assert-Installer (-not (Test-Path -LiteralPath $taskRemoved)) 'uninstall removes installed code and registration'
+    }
+    Assert-Installer ((Get-FileHash -LiteralPath $taskConfig).Hash -eq $taskConfigHash) 'uninstall preserves legacy account settings'
+    Assert-Installer ((Get-FileHash -LiteralPath $taskCache).Hash -eq $taskCacheHash) 'uninstall preserves legacy cache'
     Assert-Installer ([Environment]::GetEnvironmentVariable('PATH', 'User') -eq $taskUserPath) 'user PATH stays unchanged'
     Assert-Installer ([Environment]::GetEnvironmentVariable('PATH', 'Machine') -eq $taskMachinePath) 'machine PATH stays unchanged'
-    Write-Output "PASS: $taskChecks installer lifecycle checks. Logs: $taskRoot"
+    Write-Output "PASS: $taskChecks Electron installer lifecycle checks."
     Write-Output ('Installer signature: ' + (Get-AuthenticodeSignature -LiteralPath $taskInstaller).Status)
-}
-finally {
-    if ($taskInstalled) { Remove-TestInstallation }
+} finally {
+    if ($taskInstalled -and -not $taskUninstallAttempted) { Remove-TestInstallation }
 }
